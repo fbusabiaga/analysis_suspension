@@ -38,13 +38,16 @@ def read_config(name):
 
   # Read number of lines and bodies
   N = 0
-  with open(name, 'r') as f_handle:
-    num_lines = 0
-    N = 0
-    for line in f_handle:
-      if num_lines == 0:
-        N = int(line)
-      num_lines += 1
+  try:
+    with open(name, 'r') as f_handle:
+      num_lines = 0
+      N = 0
+      for line in f_handle:
+        if num_lines == 0:
+          N = int(line)
+        num_lines += 1
+  except OSError:
+    return np.array([])
 
   # Set array
   num_frames = num_lines // (N + 1) 

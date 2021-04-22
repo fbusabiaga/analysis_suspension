@@ -5,10 +5,10 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2001/run2001'
-  indices = np.arange(1, 10, dtype=int)
+  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2002/run2002'
+  indices = np.arange(1, 14, dtype=int)
   N_hist = 4
-  number_simulation = 2001
+  number_simulation = 2002
   N_samples = 2
   print('indices = ', indices)
 
@@ -48,9 +48,9 @@ if __name__ == '__main__':
       print('name_config = ', name_config)
 
       xj = sa.read_config(name_config)
-      if j == 0:
+      if j == 0 and xj.size > 0:
         x.append(xj)
-      else:
+      elif xj.size > 0:
         x.append(xj[1:])
       
     x = np.concatenate([xi for xi in x])
@@ -75,6 +75,16 @@ if __name__ == '__main__':
     eta_v1, eta_error_v1 = sa.compute_viscosity_from_profile(h[-1], gamma_dot=gamma_dot, eta_0=eta)
     eta_v2, eta_error_v2 = sa.compute_viscosity_from_profile(h[-2], gamma_dot=gamma_dot, eta_0=eta)
     eta_v3, eta_error_v3 = sa.compute_viscosity_from_profile(h[-3], gamma_dot=gamma_dot, eta_0=eta)
+
+    if eta_error_v1 > 1e+03:
+      eta_v1 = 1
+      eta_error_v1 = 10
+    if eta_error_v2 > 1e+03:
+      eta_v2 = 1
+      eta_error_v2 = 10
+    if eta_error_v3 > 1e+03:
+      eta_v3 = 1
+      eta_error_v3 = 10
 
     # Compute average viscosity and error
     eta_mean = (eta_v1 + eta_v2 + eta_v3) / 3.0
