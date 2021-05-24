@@ -5,11 +5,12 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2002/run2002'
-  indices = np.arange(1, 14, dtype=int)
+  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2001/run2001'
+  second_index = 0
+  indices = np.arange(1, 10, dtype=int)
   N_hist = 4
-  number_simulation = 2002
-  N_samples = 2
+  number_simulation = 2001
+  N_samples = 3
   print('indices = ', indices)
 
   # Prepare viscosity file
@@ -18,7 +19,7 @@ if __name__ == '__main__':
   
   # Loop over files
   for k, i in enumerate(indices):  
-    name_input = file_prefix + '.' + str(i) + '.0.0.inputfile'
+    name_input = file_prefix + '.' + str(i) + '.' + str(second_index) + '.0.inputfile'
     print('name_input  = ', name_input)        
 
     # Read inputfile
@@ -44,7 +45,7 @@ if __name__ == '__main__':
     # Read config
     x = []
     for j in range(N_samples):
-      name_config = file_prefix + '.' + str(i) + '.0.' + str(j) + '.star_run' + str(number_simulation) + '.' + str(i) + '.0.' + str(j) + '.config'
+      name_config = file_prefix + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.star_run' + str(number_simulation) + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.config'
       print('name_config = ', name_config)
 
       xj = sa.read_config(name_config)
@@ -57,7 +58,7 @@ if __name__ == '__main__':
     num_frames = x.shape[0]
     num_frames_vel = num_frames - 1
     N = x.shape[1]
-    N_avg = num_frames // N_hist
+    N_avg = (num_frames-1) // N_hist
     print('x.shape    = ', x.shape)
     print('num_frames = ', num_frames)
     print('N          = ', N)
@@ -68,13 +69,14 @@ if __name__ == '__main__':
     v = sa.compute_velocities(x, dt=dt_sample)
 
     # Compute velocity histograms
-    name = file_prefix + '.' + str(i) + '.histogram_velocity'
+    name = file_prefix + '.' + str(i) +  '.' + str(second_index) + '.base.histogram_velocity'
     h = sa.compute_histogram_from_frames(x, v, column_sample=2, column_value=0, num_intervales=40, xmin=0, xmax=wall_Lz, N_avg=N_avg, file_prefix=name)
 
     # Compute viscosity from three last histograms
     eta_v1, eta_error_v1 = sa.compute_viscosity_from_profile(h[-1], gamma_dot=gamma_dot, eta_0=eta)
     eta_v2, eta_error_v2 = sa.compute_viscosity_from_profile(h[-2], gamma_dot=gamma_dot, eta_0=eta)
     eta_v3, eta_error_v3 = sa.compute_viscosity_from_profile(h[-3], gamma_dot=gamma_dot, eta_0=eta)
+    eta_v4, eta_error_v4 = sa.compute_viscosity_from_profile(h[-4], gamma_dot=gamma_dot, eta_0=eta)
 
     if eta_error_v1 > 1e+03:
       eta_v1 = 1
@@ -93,7 +95,8 @@ if __name__ == '__main__':
     print('eta_v1 = ', eta_v1, ' +/- ', eta_error_v1)
     print('eta_v2 = ', eta_v2, ' +/- ', eta_error_v2)
     print('eta_v3 = ', eta_v3, ' +/- ', eta_error_v3)
-    print('eta    = ', eta_mean, eta_std)
+    print('eta_v4 = ', eta_v4, ' +/- ', eta_error_v4)
+    print('eta    = ', eta_mean, ' +/- ', eta_std)
 
     # Store viscosity
     eta_files[k,1] = i
@@ -103,7 +106,7 @@ if __name__ == '__main__':
     eta_files[k,5] = eta_std * eta
 
   # Save visocity
-  name = file_prefix + '.' + str(indices[0]) + '-' + str(indices[-1]) + '.0.0.viscosities.dat'
+  name = file_prefix + '.' + str(indices[0]) + '-' + str(indices[-1]) + '.' + str(second_index) + '.base.viscosities.dat'
   np.savetxt(name, eta_files, header='Columns: simulation number, index, number particles, gamma_dot, viscosity, standard error')
 
   
