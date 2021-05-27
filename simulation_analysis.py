@@ -68,8 +68,21 @@ def read_config(name):
 
   # Return config
   return x
-  
-  
+
+
+def read_particle_number(name):
+  '''
+  Read the number of particles from the config file.
+  '''
+
+  # Read number of lines and bodies
+  N = 0
+  with open(name, 'r') as f_handle:
+    num_lines = 0
+    return int(f_handle.readline())
+  return None
+
+    
 def compute_velocities(x, dt=1, frame_rate=1):
   '''
   Compute velocities between frames.
