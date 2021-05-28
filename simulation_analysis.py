@@ -168,8 +168,10 @@ def compute_viscosity_from_profile(x, gamma_dot=0, eta_0=1):
   sel = x[:,2] > 0
   
   # Nonlinear fit  
-  popt, pcov = scop.curve_fit(profile, x[sel,0], x[sel,1], sigma=x[sel,2], p0=[0.1, 1])
-
-  return popt[1], np.sqrt(pcov[1,1])
+  try:
+    popt, pcov = scop.curve_fit(profile, x[sel,0], x[sel,1], sigma=x[sel,2], p0=[0.1, 1])
+    return popt[1], np.sqrt(pcov[1,1])
+  except: 
+    return 1, 1e+25
 
 

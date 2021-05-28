@@ -5,11 +5,11 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2002/run2002'
+  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2001/run2001'
   second_index = 0
-  indices = np.arange(17, 18, dtype=int)
-  number_simulation = 2002
-  N_samples = 1
+  indices = np.arange(1, 10, dtype=int)
+  number_simulation = 2001
+  N_samples = 4
   print('indices = ', indices)
 
   # Prepare viscosity file
@@ -86,7 +86,7 @@ if __name__ == '__main__':
     print('\n')
 
     # Compute viscosity (assuming background flow = shear * (z, 0, 0)
-    eta_mean = number_density * force_moment_avg[0,2] / gamma_dot 
+    eta_mean = eta + number_density * force_moment_avg[0,2] / gamma_dot 
     eta_std_error = number_density * force_moment_std[0,2] / gamma_dot 
     print('eta = ', eta_mean / eta, ' +/- ', eta_std_error / eta)
     print('\n')
@@ -95,7 +95,7 @@ if __name__ == '__main__':
     eta_files[k,1] = i
     eta_files[k,2] = N
     eta_files[k,3] = gamma_dot
-    eta_files[k,4] = eta_mean + eta
+    eta_files[k,4] = eta_mean 
     eta_files[k,5] = eta_std_error
 
     # Save visocity
