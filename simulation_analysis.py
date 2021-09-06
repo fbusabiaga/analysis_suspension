@@ -175,3 +175,21 @@ def compute_viscosity_from_profile(x, gamma_dot=0, eta_0=1):
     return 1, 1e+25
 
 
+def compute_velocity_slope(x):
+  '''
+  Compute visocity from velocity profile.
+  '''
+  def profile(x, v0, slope):
+    return v0 + slope * x
+
+  # Select empty bins
+  sel = x[:,2] > 0
+  
+  # Nonlinear fit  
+  try:
+    popt, pcov = scop.curve_fit(profile, x[sel,0], x[sel,1], sigma=x[sel,2], p0=[0, 0])
+    return popt[1], np.sqrt(pcov[1,1])
+  except: 
+    return 0, 1e+25
+
+
