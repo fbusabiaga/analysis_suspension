@@ -5,12 +5,13 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2102/run2102'
+  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2101/run2101'
   second_index = 0
-  indices = np.arange(1, 7, dtype=int)
+  indices = np.arange(1, 2, dtype=int)
+  N_skip = 1
   N_hist = 4
-  number_simulation = 2102
-  N_samples = 2
+  number_simulation = 2101
+  N_samples = 6
   print('indices = ', indices)
 
   # Prepare viscosity file
@@ -77,43 +78,45 @@ if __name__ == '__main__':
     name = file_prefix + '.' + str(i) +  '.' + str(second_index) + '.base.histogram_velocity'
     h = sa.compute_histogram_from_frames(x, v, column_sample=2, column_value=0, num_intervales=40, xmin=0, xmax=wall_Lz, N_avg=N_avg, file_prefix=name)
 
-    # Compute velocity slope
-    vel_slope_v1, vel_slope_error_v1 = sa.compute_velocity_slope(h[-1])
-    vel_slope_v2, vel_slope_error_v2 = sa.compute_velocity_slope(h[-2])
-    vel_slope_v3, vel_slope_error_v3 = sa.compute_velocity_slope(h[-3])
-    vel_slope_v4, vel_slope_error_v4 = sa.compute_velocity_slope(h[-4])
+    # Compute velocity slopes
+    vel_slope_mean = 0
+    vel_slope_std = 0
+    vel_slope_mean_std = 0
+    for j in range(N_hist):
+      vel_slope, vel_slope_error = sa.compute_velocity_slope(h[j])
+      print('j = ', j, ' slope = ', vel_slope, ' +/- ', vel_slope_error)
 
-    # Compute average velocity slope
-    vel_slope_mean = ( vel_slope_v1 +  vel_slope_v2 +  vel_slope_v3) / 3.0
-    vel_slope_std = np.sqrt(((vel_slope_v1 - vel_slope_mean)**2 + (vel_slope_v2 - vel_slope_mean)**2 + (vel_slope_v3 - vel_slope_mean)**2) / (3 * 2))
-    vel_slope_std += (vel_slope_error_v1 + vel_slope_error_v2 + vel_slope_error_v3) / 3.0
-    print('slope_v1 = ', vel_slope_v1, ' +/- ', vel_slope_error_v1)
-    print('slope_v2 = ', vel_slope_v2, ' +/- ', vel_slope_error_v2)
-    print('slope_v3 = ', vel_slope_v3, ' +/- ', vel_slope_error_v3)
-    print('slope_v4 = ', vel_slope_v4, ' +/- ', vel_slope_error_v4)
-    print('slope    = ', vel_slope_mean, ' +/- ', vel_slope_std)
+      # Compute means
+      if j >= N_skip:
+        vel_slope_mean_std += (j - N_skip) * (vel_slope - vel_slope_mean)**2 / (j - N_skip + 1)
+        vel_slope_mean += (vel_slope - vel_slope_mean) / (j - N_skip + 1)
+        vel_slope_std += (vel_slope_error - vel_slope_std) / (j - N_skip + 1)
 
-    # Compute viscosity
+    vel_slope_std += np.sqrt(vel_slope_mean_std / np.maximum(1, N_hist - N_skip) / np.maximum(1, N_hist - N_skip - 1))
+    print('slope  = ', vel_slope_mean, ' +/- ', vel_slope_std)
+
+    # Compute viscosity from slopes average
     eta_mean = gamma_dot / vel_slope_mean
-    eta_std = eta_mean * np.abs(vel_slope_std / vel_slope_mean)
+    eta_std = np.abs(eta_mean * vel_slope_std / vel_slope_mean)
     print('eta    = ', eta_mean, ' +/- ', eta_std, '\n')
     
+    # Compute viscosities from slopes and then average
     if True:
-      # Compute viscosity from three last histograms
-      eta_v1, eta_error_v1 = sa.compute_viscosity_from_profile(h[-1], gamma_dot=gamma_dot, eta_0=eta)
-      eta_v2, eta_error_v2 = sa.compute_viscosity_from_profile(h[-2], gamma_dot=gamma_dot, eta_0=eta)
-      eta_v3, eta_error_v3 = sa.compute_viscosity_from_profile(h[-3], gamma_dot=gamma_dot, eta_0=eta)
-      eta_v4, eta_error_v4 = sa.compute_viscosity_from_profile(h[-4], gamma_dot=gamma_dot, eta_0=eta)
+      eta_v_mean = 0
+      eta_v_std = 0
+      eta_v_mean_std =0
+      for j in range(N_hist):
+        eta_v, eta_v_error = sa.compute_viscosity_from_profile(h[j], gamma_dot=gamma_dot, eta_0=eta)
+        print('j = ', j, ' eta_v = ', eta_v, ' +/- ', eta_v_error)
 
-      # Compute average viscosity and error
-      eta_mean_version_2 = (eta_v1 + eta_v2 + eta_v3) / 3.0
-      eta_std_version_2 = np.sqrt(((eta_v1 - eta_mean)**2 + (eta_v2 - eta_mean)**2 + (eta_v3 - eta_mean)**2) / (3 * 2)) 
-      eta_std_version_2 += (eta_error_v1 + eta_error_v2 + eta_error_v3) / 3.0
-      print('eta_v1 = ', eta_v1, ' +/- ', eta_error_v1)
-      print('eta_v2 = ', eta_v2, ' +/- ', eta_error_v2)
-      print('eta_v3 = ', eta_v3, ' +/- ', eta_error_v3)
-      print('eta_v4 = ', eta_v4, ' +/- ', eta_error_v4)
-      print('eta    = ', eta_mean_version_2, ' +/- ', eta_std_version_2, '\n')
+        # Compute means
+        if j >= N_skip:
+          eta_v_mean_std += (j - N_skip) * (eta_v - eta_v_mean)**2 / (j - N_skip + 1)
+          eta_v_mean += (eta_v - eta_v_mean) / (j - N_skip + 1)
+          eta_v_std += (eta_v_error - eta_v_std) / (j - N_skip + 1)
+          
+      eta_v_std += np.sqrt(eta_v_mean_std / np.maximum(1, N_hist - N_skip) / np.maximum(1, N_hist - N_skip - 1))
+      print('eta = ', eta_v_mean, ' +/- ', eta_v_std, '\n\n')
 
     # Compute shear rate
     shear_rate = gamma_dot / eta_mean
