@@ -1,6 +1,7 @@
 import numpy as np
 import scipy.stats as scst
 import scipy.optimize as scop
+import matplotlib.pyplot as plt
 import sys
 
 
@@ -193,3 +194,39 @@ def compute_velocity_slope(x):
     return 0, 1e+25
 
 
+def nonlinear_fit(x, y, func, sigma=None, p0=None, save_plot_name=None):
+  '''
+  Nonlinear fit.
+  '''
+
+  # Do non-linear fit
+  popt, pcov = scop.curve_fit(func, x, y, sigma=sigma, p0=p0)
+
+  # Compute adjusted R**2
+  degrees_freedom = x.size - 1
+  degrees_freedom_fit = x.size - 1 - popt.size
+  residual = y - func(x, *popt)
+  sum_squares_residual = np.sum(residual**2)
+  y_mean = np.sum(y) / y.size
+  sum_squares_total = np.sum((y - y_mean)**2)
+  R2_adjusted = 1 - (sum_squares_residual / degrees_freedom_fit) / (sum_squares_total / degrees_freedom)
+
+  # Plot data and func
+  if save_plot_name is not None:
+    # Create panel
+    fig, axes = plt.subplots(1, 1, figsize=(5,5))
+
+    # Plot
+    plt.errorbar(x, y, sigma, marker='s', mfc='green', mec='green', ms=4, mew=0, label='data')
+
+    # Set axes and legend
+    plt.plot(x, func(x, *popt), 'r-', label='fit')
+    plt.xlabel('x')
+    plt.ylabel('y')
+    plt.legend()
+    fig.tight_layout()
+  
+    # Save to pdf and png
+    plt.savefig(save_plot_name, format='png') 
+
+  return popt, pcov, R2_adjusted
