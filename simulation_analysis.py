@@ -87,6 +87,8 @@ def read_particle_number(name):
 def compute_velocities(x, dt=1, frame_rate=1):
   '''
   Compute velocities between frames.
+
+  Return with shape = (num_frames, num_bodies, 6).
   '''
   num_frames = x.shape[0]
   N = x.shape[1]
