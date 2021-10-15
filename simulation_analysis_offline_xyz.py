@@ -13,8 +13,8 @@ if __name__ == '__main__':
   name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/chiral/Structures/superellipsoid_Lg_1.368_r_3.9_N_26.vertex'
   num_frames = 10
   save_blobs = True
-  save_dipole = False
-  save_velocity = False
+  save_dipole = True
+  save_velocity = True
 
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
@@ -40,7 +40,7 @@ if __name__ == '__main__':
   
   # Read config
   x = sa.read_config(name_config)
-  t = np.arange(x.shape[0]) * dt
+  t = np.arange(x.shape[0]) * dt_sample
   print('total number of frames = ', x.shape[0])
   print('num_frames             = ', num_frames)
 
@@ -52,11 +52,25 @@ if __name__ == '__main__':
     name = file_prefix + '.' + structure + '.xyz'
     sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper())
 
+  # Save dipole as xyz file
+  if save_dipole:
+    dipole_0 = np.fromstring(read.get('mu'), sep=' ')
+    B0 = float(read.get('B0'))
+    omega = float(read.get('omega'))
+    dipole = np.zeros((x.shape[1], 3))
+    dipole[:] = dipole_0
+    B = np.zeros((x.shape[0], 3))
+    B[:,0] = B0 * np.cos(omega * t)
+    B[:,1] = B0 * np.sin(omega * t)
+    name = file_prefix + '.' + structure + '.dipole.xyz'    
+    sa.save_xyz(x, np.zeros(3), name, num_frames=num_frames, letter=structure[0].upper(), body_frame_vector=dipole, global_vector=B, header='Columns: r, dipole, magnetic field')
+    
   # Save velocity as xyz file
   if save_velocity:
     # Compute velocity
-    velocity = sa.compute_velocities(x, dt=dt, frame_rate=frame_rate)
-    print('velocity = ', velocity.shape)
+    name = file_prefix + '.' + structure + '.velocity.xyz'    
+    velocity = sa.compute_velocities(x, dt=dt_sample)
+    sa.save_xyz(x, np.zeros(3), name, num_frames=num_frames, letter=structure[0].upper(), body_vector=velocity, header='Columns: r, velocity')
 
 
 
