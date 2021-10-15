@@ -83,6 +83,34 @@ def read_particle_number(name):
     return int(f_handle.readline())
   return None
 
+
+def read_vertex(name):
+  '''
+  It reads a vertex file of the rigid bodies and return
+  the coordinates as a numpy array with shape (Nblobs, 3).
+  '''
+  comment_symbols = ['#']   
+  coor = []
+  with open(name, 'r') as f:
+    i = 0
+    for line in f:
+      # Strip comments
+      if comment_symbols[0] in line:
+        line, comment = line.split(comment_symbols[0], 1)
+
+      # Ignore blank lines
+      line = line.strip()
+      if line != '':
+        if i == 0:
+          Nblobs = int(line.split()[0])
+        else:
+          location = np.fromstring(line, sep=' ')
+          coor.append(location)
+        i += 1
+
+  coor = np.array(coor)
+  return coor
+
     
 def compute_velocities(x, dt=1, frame_rate=1):
   '''
@@ -232,3 +260,38 @@ def nonlinear_fit(x, y, func, sigma=None, p0=None, save_plot_name=None):
     plt.savefig(save_plot_name, format='png') 
 
   return popt, pcov, R2_adjusted
+
+
+def rotation_matrix(theta):
+    ''' 
+    Return the rotation matrix representing rotation by this quaternion.
+    '''
+    theta /= np.linalg.norm(theta)
+    s = theta[0]
+    p = theta[1:4]    
+    diag = s**2 - 0.5
+    return 2.0 * np.array([[p[0]**2+diag,     p[0]*p[1]-s*p[2], p[0]*p[2]+s*p[1]], 
+                           [p[1]*p[0]+s*p[2], p[1]**2+diag,     p[1]*p[2]-s*p[0]],
+                           [p[2]*p[0]-s*p[1], p[2]*p[1]+s*p[0], p[2]**2+diag]])
+
+
+def save_xyz(x, r_vectors, name, num_frames=1, letter='O'):
+  '''
+  Save xyz file.
+  '''
+  # Save M frames
+  M = x.shape[0] if x.shape[0] < num_frames else num_frames
+  Nblobs = x.shape[1] * r_vectors.size // 3
+  file_output = open(name, 'w')
+
+  # Loop over frames
+  for i, xi in enumerate(x[0:M]):
+    file_output.write(str(Nblobs) + '\n#\n')
+    for j, y in enumerate(xi):
+      theta = y[3:8]
+      R = rotation_matrix(theta)
+      r = np.dot(r_vectors, R.T) + y[0:3]
+      for ri in r:
+        file_output.write(letter + ' %s %s %s \n' % (ri[0], ri[1], ri[2]))   
+  
+  return 
