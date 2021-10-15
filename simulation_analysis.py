@@ -288,6 +288,13 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=Non
   for i, xi in enumerate(x[0:M]):
     # file_output.write(str(Nblobs) + '\n#\n')
     file_output.write(str(Nblobs) + '\n# ' + header + '\n')
+    
+    if body_vector is not None:
+      vr = body_vector[i]
+      
+    if global_vector is not None:
+      vg = global_vector[i]
+    
     for j, y in enumerate(xi):
       theta = y[3:8]
       R = rotation_matrix(theta)
@@ -296,24 +303,18 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=Non
 
       if body_frame_vector is not None:
         v = np.dot(body_frame_vector, R.T)
-
-      if body_vector is not None:
-        vr = body_vector[i]
-
-      if global_vector is not None:
-        vg = global_vector[i]
         
       for k, ri in enumerate(r):        
         file_output.write(letter + ' %s %s %s ' % (ri[0], ri[1], ri[2]))
 
         if body_frame_vector is not None:
-          file_output.write(' %s %s %s ' % (v[k,0], v[k,1], v[k,2]))
+          np.savetxt(file_output, v[j], newline=' ')
 
         if body_vector is not None:
-          np.savetxt(file_output, vr[k], newline=' ')
+          np.savetxt(file_output, vr[j], newline=' ')
 
         if global_vector is not None:
-          file_output.write(' %s %s %s ' % (vg[0], vg[1], vg[2]))
+          np.savetxt(file_output, vg, newline=' ')
         file_output.write('\n')
                   
   return 
