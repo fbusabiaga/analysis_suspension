@@ -8,11 +8,11 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run700/run744/run744.1.0.0'
-  structure = 'superellipsoid_run744.1.0.0'
-  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/chiral/Structures/superellipsoid_Lg_1.368_r_3.9_N_26.vertex'
-  num_frames = 100
-  save_blobs = True
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2103/run2103.1.0.0'
+  structure = 'shell'
+  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/Structures/blob.vertex'
+  num_frames = 2500
+  save_blobs = False
   save_dipole = True
   save_velocity = True
 

@@ -239,7 +239,7 @@ def nonlinear_fit(x, y, func, sigma=None, p0=None, save_plot_name=None):
   sum_squares_residual = np.sum(residual**2)
   y_mean = np.sum(y) / y.size
   sum_squares_total = np.sum((y - y_mean)**2)
-  R2_adjusted = 1 - (sum_squares_residual / degrees_freedom_fit) / (sum_squares_total / degrees_freedom)
+  R2_adjusted = 1 - (sum_squares_residual / degrees_freedom_fit) / (np.maximum(sum_squares_total, 1e-12) / degrees_freedom)
 
   # Plot data and func
   if save_plot_name is not None:
