@@ -8,13 +8,14 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2103/run2103.1.0.0'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2103/run2103.15.0.0'
   structure = 'shell'
   name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/Structures/blob.vertex'
   num_frames = 2500
   save_blobs = False
   save_dipole = True
   save_velocity = True
+  save_dat_index = 0
 
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
@@ -70,9 +71,12 @@ if __name__ == '__main__':
     # Compute velocity
     name = file_prefix + '.' + structure + '.velocity.xyz'    
     velocity = sa.compute_velocities(x, dt=dt_sample)
+    force = np.zeros((num_frames, 3))
+    force[:,0] = 1
     sa.save_xyz(x, np.zeros(3), name, num_frames=num_frames, letter=structure[0].upper(), body_vector=velocity, header='Columns: r, velocity')
 
-
-
-
-  
+  # Save dat file
+  if save_dat_index is not None:
+    name = file_prefix + '.' + structure + '.' + str(save_dat_index) + '.dat'
+    sa.save_dat(x, t, save_dat_index, name)
+    

@@ -318,3 +318,17 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=Non
         file_output.write('\n')
                   
   return 
+
+
+def save_dat(x, t, i, name, header=''):
+  '''
+  Save body i as a data file.
+  '''
+  result = np.zeros((t.size, 8))
+  result[:,0] = t
+  result[:,1:] = x[:,i]
+  np.savetxt(name, result, header=header)
+  return
+
+
+  
