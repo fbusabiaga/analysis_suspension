@@ -188,6 +188,29 @@ def compute_histogram_from_frames(sample, value, column_sample=0, column_value=0
   return h
 
 
+def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, name=None):
+  '''
+  Compute histogram averages. 
+  '''
+  
+  # Loop over steps
+  # h = np.zeros((num_intervales, 2))
+
+  # Created histogram
+  h, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density='True')
+
+  # Set histogram
+  hist = np.zeros((h.size, 2))
+  hist[:,0] = (h_edges[0:-1] + h_edges[1:]) / 2
+  hist[:,1] = h
+
+  # Save to a file
+  if name is not None:
+    np.savetxt(name, hist, header='Columns, x, value')
+
+  return hist
+
+
 def compute_viscosity_from_profile(x, gamma_dot=0, eta_0=1):
   '''
   Compute visocity from velocity profile.
