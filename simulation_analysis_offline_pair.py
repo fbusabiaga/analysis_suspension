@@ -36,7 +36,6 @@ if __name__ == '__main__':
     # Read config
     name_config = file_prefix + '.' + str(i) + '.' + structure_prefix + '.' + str(i) + '.config'
     x = sa.read_config(name_config)
-    print('x = ', x.shape)
     escape_times[i] = x.shape[0] * dt_sample
     
   # Save result 

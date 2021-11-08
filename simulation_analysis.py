@@ -197,12 +197,14 @@ def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1
   # h = np.zeros((num_intervales, 2))
 
   # Created histogram
-  h, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density='True')
+  h, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=True)
+  hf, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=False)
 
   # Set histogram
-  hist = np.zeros((h.size, 2))
+  hist = np.zeros((h.size, 3))
   hist[:,0] = (h_edges[0:-1] + h_edges[1:]) / 2
   hist[:,1] = h
+  hist[:,2] = hf
 
   # Save to a file
   if name is not None:
