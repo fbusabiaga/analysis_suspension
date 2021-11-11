@@ -188,7 +188,7 @@ def compute_histogram_from_frames(sample, value, column_sample=0, column_value=0
   return h
 
 
-def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, name=None):
+def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, header='', name=None):
   '''
   Compute histogram averages. 
   '''
@@ -208,7 +208,7 @@ def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1
 
   # Save to a file
   if name is not None:
-    np.savetxt(name, hist, header='Columns, x, value')
+    np.savetxt(name, hist, header=header)
 
   return hist
 
