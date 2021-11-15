@@ -8,8 +8,7 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2022/run2022.0.0'
-  num_frames = 50001
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2020/run2020.0.0'
   N_start = 0
   N_end = 400
   N = N_end - N_start
@@ -21,6 +20,7 @@ if __name__ == '__main__':
   # Loop over simulations
   for i in range(N_start, N_end):    
     # Read inputfile
+    print('i = ', i)
     name_input = file_prefix + '.' + str(i) + '.inputfile' 
     read = sa.read_input(name_input)
     dt = float(read.get('dt')) 
@@ -39,59 +39,38 @@ if __name__ == '__main__':
   name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.escape_times.dat'
   np.savetxt(name, escape_times)
 
-  if False:
-    # Compute histogram
-    name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.histogram.escape_times.dat'
-    xmax = np.sort(escape_times)[-1] * 1.25
-    print('xmax = ', xmax)
-    print('np.sort(escape_times) = ', np.sort(escape_times))
-    sa.compute_histogram(escape_times.reshape((N, 1)), num_intervales=25, xmin=0, xmax=xmax, name=name)
-    name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.histogram.escape_times_log.dat'
-    if True:
-      xmin = np.log10(gamma_dot * np.sort(escape_times)[0] / 2) 
-      xmax = np.log10(gamma_dot * np.sort(escape_times)[-1] * 2) 
-      num_intervales=int(np.sqrt(escape_times.size))
-    else:
-      xmin = np.log10(gamma_dot * 0.5 * 0.0054)
-      xmax = np.log10(gamma_dot * 2 * 0.10562)
-      num_intervales = 20
-    sa.compute_histogram(np.log10(gamma_dot * escape_times).reshape((N, 1)), num_intervales=num_intervales, xmin=xmin, xmax=xmax, name=name, header='Columns: log10(gamma_dot*t), P(log10(gamma_dot*t)), #events')
+  # Prepare variables
+  N_hist = N // N_avg
+  num_intervales = int(np.sqrt(N))
+  hist = np.zeros((N_avg, num_intervales, 3))
+  hist_log = np.zeros((N_avg, num_intervales, 3))
+  xmin = np.min(escape_times) / 1.25
+  xmax = np.max(escape_times) * 1.25
+  xmin_log = np.log10(gamma_dot * np.min(escape_times) / 2)
+  xmax_log = np.log10(gamma_dot * np.max(escape_times) * 2)
 
-
-  else:
-    # Prepare variables
-    N_hist = N // N_avg
-    num_intervales = int(np.sqrt(N))
-    hist = np.zeros((N_avg, num_intervales, 3))
-    hist_log = np.zeros((N_avg, num_intervales, 3))
-    xmin = np.min(escape_times) / 1.25
-    xmax = np.max(escape_times) * 1.25
-    xmin_log = np.log10(gamma_dot * np.min(escape_times) / 2)
-    xmax_log = np.log10(gamma_dot * np.max(escape_times) * 2)
-
-    for i in range(N_avg):
-      # Hist linear in time
-      h = sa.compute_histogram(escape_times[i*N_hist:(i+1)*N_hist].reshape((N_hist,1)), num_intervales=num_intervales, xmin=0, xmax=xmax)
-      hist[i] = np.copy(h)
-
-      # Hist log in time
-      h = sa.compute_histogram(np.log10(gamma_dot * escape_times[i*N_hist:(i+1)*N_hist]).reshape((N_hist, 1)), 
-                               num_intervales=num_intervales, xmin=xmin_log, xmax=xmax_log)
-      hist_log[i] = np.copy(h)
+  for i in range(N_avg):
+    # Hist linear in time
+    h = sa.compute_histogram(escape_times[i*N_hist:(i+1)*N_hist].reshape((N_hist,1)), num_intervales=num_intervales, xmin=0, xmax=xmax)
+    hist[i] = np.copy(h)
     
-    # Save files
-    h = np.zeros((num_intervales, 5))
-    h[:,0] = hist[0,:,0]
-    h[:,1:3] = np.average(hist[:,:,1:3], axis=0)
-    h[:,3:5] = np.std(hist[:,:,1:3], axis=0, ddof=1) / np.sqrt(N_avg)
-    name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.histogram.escape_times.dat'
-    np.savetxt(name, h, header='Columns: t, density, number, std density, std number')
-
-
-    h = np.zeros((num_intervales, 5))
-    h[:,0] = hist_log[0,:,0]
-    h[:,1:3] = np.average(hist_log[:,:,1:3], axis=0)
-    h[:,3:5] = np.std(hist_log[:,:,1:3], axis=0, ddof=1) / np.sqrt(N_avg)
-    name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.histogram.escape_times_log.dat'
-    np.savetxt(name, h, header='Columns: log10(gamma_dot*t), density, number, std density, std number')
+    # Hist log in time
+    h = sa.compute_histogram(np.log10(gamma_dot * escape_times[i*N_hist:(i+1)*N_hist]).reshape((N_hist, 1)), 
+                             num_intervales=num_intervales, xmin=xmin_log, xmax=xmax_log)
+    hist_log[i] = np.copy(h)
+    
+  # Save files
+  h = np.zeros((num_intervales, 5))
+  h[:,0] = hist[0,:,0]
+  h[:,1:3] = np.average(hist[:,:,1:3], axis=0)
+  h[:,3:5] = np.std(hist[:,:,1:3], axis=0, ddof=1) / np.sqrt(N_avg)
+  name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.histogram.escape_times.dat'
+  np.savetxt(name, h, header='Columns: t, density, number, std density, std number')
+  
+  h = np.zeros((num_intervales, 5))
+  h[:,0] = hist_log[0,:,0]
+  h[:,1:3] = np.average(hist_log[:,:,1:3], axis=0)
+  h[:,3:5] = np.std(hist_log[:,:,1:3], axis=0, ddof=1) / np.sqrt(N_avg)
+  name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.histogram.escape_times_log.dat'
+  np.savetxt(name, h, header='Columns: log10(gamma_dot*t), density, number, std density, std number')
 
