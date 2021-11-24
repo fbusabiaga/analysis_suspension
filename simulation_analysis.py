@@ -1,8 +1,11 @@
 import numpy as np
 import scipy.stats as scst
 import scipy.optimize as scop
-import matplotlib.pyplot as plt
 import sys
+try:
+  import matplotlib.pyplot as plt
+except ImportError as e:
+  print(e)
 
 
 def read_input(name):
@@ -123,7 +126,6 @@ def compute_velocities(x, dt=1, frame_rate=1):
   dt_frames = frame_rate * dt
   Psi = np.zeros((N, 4, 3))
   v = np.zeros((num_frames-frame_rate, N, 6))
-
 
   # Loop over frames and bodies
   for i in range(num_frames - frame_rate):
