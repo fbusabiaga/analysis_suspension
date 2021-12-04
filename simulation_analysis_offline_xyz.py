@@ -8,64 +8,61 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2103/run2103.15.0.0'
-  structure = 'shell'
-  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/Structures/blob.vertex'
-  num_frames = 2500
-  save_blobs = False
-  save_dipole = True
-  save_velocity = True
-  save_dat_index = 0
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2211/run2211.6.9.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2211/run2211.6.9.0.rod_run2211.6.9.0.config',
+                  '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run2000/run2211/run2211.6.9.1.rod_run2211.6.9.1.config']
+  structure = 'rod'
+  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/chiral/Structures/rod_Lg_1.664_Rg_0.416_Nx_6_Ntheta_6.vertex'
+  num_frames = 1000
+  save_blobs = True
+  save_dipole = False
+  save_velocity = False
+  save_dat_index = [0,4]
 
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
   read = sa.read_input(name_input)
 
+  # Read vertex
+  r_vectors = sa.read_vertex(name_vertex)
+
   # Get number of particles
-  name_config = file_prefix + '.' + structure + '.config'
-  N = sa.read_particle_number(name_config)
+  N = sa.read_particle_number(files_config[0])
 
   # Set some parameters
   dt = float(read.get('dt')) 
   n_save = int(read.get('n_save'))
   dt_sample = dt * n_save
   eta = float(read.get('eta'))
-  omega = float(read.get('omega'))
   print('file_prefix = ', file_prefix)
-  print('file_config = ', name_config)
   print('dt          = ', dt)
   print('dt_sample   = ', dt_sample)
   print('n_save      = ', n_save)
   print('eta         = ', eta)
   print(' ')
-  
-  # Read config
-  x = sa.read_config(name_config)
+
+  # Loop over config files
+  x = []
+  for j, name_config in enumerate(files_config):
+    print('name_config = ', name_config)
+    xj = sa.read_config(name_config)
+    if j == 0 and xj.size > 0:
+      x.append(xj)
+    elif xj.size > 0:
+      x.append(xj[1:])
+
+  # Concatenate config files
+  x = np.concatenate([xi for xi in x])
   t = np.arange(x.shape[0]) * dt_sample
   print('total number of frames = ', x.shape[0])
   print('num_frames             = ', num_frames)
-
-  # Read vertex
-  r_vectors = sa.read_vertex(name_vertex)
+  print(' ')
 
   # Save xyz for blobs
   if save_blobs:
     name = file_prefix + '.' + structure + '.xyz'
     sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper())
-
-  # Save dipole as xyz file
-  if save_dipole:
-    dipole_0 = np.fromstring(read.get('mu'), sep=' ')
-    B0 = float(read.get('B0'))
-    omega = float(read.get('omega'))
-    dipole = np.zeros((x.shape[1], 3))
-    dipole[:] = dipole_0
-    B = np.zeros((x.shape[0], 3))
-    B[:,0] = B0 * np.cos(omega * t)
-    B[:,1] = B0 * np.sin(omega * t)
-    name = file_prefix + '.' + structure + '.dipole.xyz'    
-    sa.save_xyz(x, np.zeros(3), name, num_frames=num_frames, letter=structure[0].upper(), body_frame_vector=dipole, global_vector=B, header='Columns: r, dipole, magnetic field')
-    
+       
   # Save velocity as xyz file
   if save_velocity:
     # Compute velocity
@@ -77,6 +74,25 @@ if __name__ == '__main__':
 
   # Save dat file
   if save_dat_index is not None:
-    name = file_prefix + '.' + structure + '.' + str(save_dat_index) + '.dat'
-    sa.save_dat(x, t, save_dat_index, name)
-    
+    for i in save_dat_index:
+      name = file_prefix + '.' + structure + '.' + str(i) + '.dat'
+      sa.save_dat(x, t, i, name)
+
+      
+
+  # Save dipole as xyz file
+  if save_dipole:
+    dipole_0 = np.fromstring(read.get('mu'), sep=' ')
+    B0 = float(read.get('B0'))
+    omega = float(read.get('omega'))
+    dipole = np.zeros((x.shape[1], 3))
+    dipole[:] = dipole_0
+    B = np.zeros((x.shape[0], 3))
+    B[:,0] = B0 * np.cos(omega * t)
+    B[:,2] = -B0 * np.sin(omega * t)
+    name = file_prefix + '.' + structure + '.dipole.xyz'    
+    print('B0    = ', B0)
+    print('omega = ', omega)
+    print('name  = ', name)
+    # print('B     = ', B)
+    sa.save_xyz(x, np.zeros(3), name, num_frames=num_frames, letter=structure[0].upper(), body_frame_vector=dipole, global_vector=B, header='Columns: r, dipole, magnetic field')
