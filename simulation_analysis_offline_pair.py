@@ -8,7 +8,7 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2020/run2020.0.0'
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2022/run2022.3.0'
   N_start = 0
   N_end = 400
   N = N_end - N_start
@@ -20,7 +20,6 @@ if __name__ == '__main__':
   # Loop over simulations
   for i in range(N_start, N_end):    
     # Read inputfile
-    print('i = ', i)
     name_input = file_prefix + '.' + str(i) + '.inputfile' 
     read = sa.read_input(name_input)
     dt = float(read.get('dt')) 
@@ -34,6 +33,7 @@ if __name__ == '__main__':
     with open(name) as f_handle:
       steps = int(f_handle.readline())
     escape_times[i - N_start] = steps * dt
+    print('i = ', i, ', escape_time = ', steps * dt)
     
   # Save result 
   name = file_prefix + '.' + str(N_start) + '-' + str(N_end-1) + '.escape_times.dat'
