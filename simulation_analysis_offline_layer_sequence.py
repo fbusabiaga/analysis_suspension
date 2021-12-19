@@ -5,17 +5,18 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/mnt/home/fbalboausabiaga/symlinks/ceph/sfw/RigidMultiblobsWall/rheology/data/run2000/run2101/run2101'
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2111/run2111'
   second_index = 0
-  indices = np.arange(1, 2, dtype=int)
+  indices = np.arange(0, 7, dtype=int)
+  N_skip_stresslet = 0
   N_skip = 1
   N_hist = 4
-  number_simulation = 2101
-  N_samples = 6
+  number_simulation = 2111
+  N_samples = 2
   print('indices = ', indices)
 
   # Prepare viscosity file
-  eta_files = np.zeros((len(indices), 10))
+  eta_files = np.zeros((len(indices), 11))
   eta_files[:,0] = number_simulation
   
   # Loop over files
@@ -127,7 +128,7 @@ if __name__ == '__main__':
     force_moment_std_avg = np.zeros((3,3))
     force_moment_std = np.zeros((3,3))
     force_moment_counter = 0
-    for j in range(N_samples):
+    for j in range(N_skip_stresslet, N_samples):
       name_force_moment = file_prefix + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.force_moment.dat'
       name_force_moment_std = file_prefix + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.force_moment_standard_error.dat'
       try:
@@ -173,9 +174,10 @@ if __name__ == '__main__':
     eta_files[k,7] = eta_std * eta
     eta_files[k,8] = eta_stresslet_mean
     eta_files[k,9] = eta_stresslet_std_error
+    eta_files[k,10] = num_frames * dt_sample
     
   # Save visocity
   name = file_prefix + '.' + str(indices[0]) + '-' + str(indices[-1]) + '.' + str(second_index) + '.base.viscosities.dat'
-  np.savetxt(name, eta_files, header='Columns (10): simulation number, index, number particles, gamma_dot, shear_rate (measured), \nshear_rate_std, viscosity (from velocity profile), standard error, viscosity (from stresslet), standard error')
+  np.savetxt(name, eta_files, header='Columns (11): 0=simulation number, 1=index, 2=number particles, 3=gamma_dot, 4=shear_rate (measured), \n5=shear_rate_std, 6=viscosity (from velocity profile), 7=standard error, 8=viscosity (from stresslet), 9=standard error, 10=time')
 
   
