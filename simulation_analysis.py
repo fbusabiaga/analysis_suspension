@@ -475,7 +475,7 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
         if L[i] > 0:
           boxsize[i] = L[i]
         else:
-          boxsize[i] = (np.max(r_vectors[:,i]) - np.min(r_vectors[:,i])) + d_max * 10
+          boxsize[i] = (np.max(r_vectors[:,i]) - np.min(r_vectors[:,i])) + rcut * 10
     else:
       boxsize = None   
 
