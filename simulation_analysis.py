@@ -1,11 +1,18 @@
 import numpy as np
 import scipy.stats as scst
 import scipy.optimize as scop
+import scipy.spatial as scsp
 import sys
 try:
   import matplotlib.pyplot as plt
 except ImportError as e:
   print(e)
+try:
+  from numba import njit, prange
+except ImportError as e:
+  njit=None
+  print(e)
+
 
 
 def read_input(name):
@@ -313,9 +320,8 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=Non
 
   # Loop over frames
   for i, xi in enumerate(x[0:M]):
-    # file_output.write(str(Nblobs) + '\n#\n')
     file_output.write(str(Nblobs) + '\n# ' + header + '\n')
-    
+        
     if body_vector is not None:
       vr = body_vector[i]
       
@@ -331,7 +337,7 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=Non
       if body_frame_vector is not None:
         v = np.dot(body_frame_vector, R.T)
         
-      for k, ri in enumerate(r):        
+      for k, ri in enumerate(r):     
         file_output.write(letter + ' %s %s %s ' % (ri[0], ri[1], ri[2]))
 
         if body_frame_vector is not None:
@@ -357,5 +363,145 @@ def save_dat(x, t, i, name, header=''):
   np.savetxt(name, result, header=header)
   return
 
-
   
+def project_to_periodic_image(r, L):
+    '''
+    Project a vector r to the minimal image representation
+    of size L=(Lx, Ly, Lz) and with a corner at (0,0,0). If 
+    any dimension of L is equal or smaller than zero the 
+    box is assumed to be infinite in that direction.
+    
+    If one dimension is not periodic shift all coordinates by min(r[:,i]) value.
+    '''
+    if L is not None:
+      for i in range(3):
+        if(L[i] > 0):
+          r[:,i] = r[:,i] - (r[:,i] // L[i]) * L[i]
+        else:
+          ri_min =  np.min(r[:,i])
+          if ri_min < 0:
+            r[:,i] -= ri_min
+    return r
+
+
+@njit(parallel=False, fastmath=True)
+def gr_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbins, dim, Nblobs_body):
+  '''
+  This function compute the gr for one snapshot.
+  '''
+  N = r_vectors.size // 3
+  r_vectors = r_vectors.reshape((N, 3))
+  dbin = rcut / nbins
+  gr = np.zeros((nbins, 2))
+
+  # Copy arrays
+  rx_vec = np.copy(r_vectors[:,0])
+  ry_vec = np.copy(r_vectors[:,1])
+  rz_vec = np.copy(r_vectors[:,2])
+  Lx = L[0]
+  Ly = L[1]
+  Lz = L[2]
+
+  for i in prange(N):
+    i_body = i // Nblobs_body
+    for k in range(offsets[i+1] - offsets[i]):
+      j = list_of_neighbors[offsets[i] + k]
+      j_body = j // Nblobs_body
+      if (i >= j) or (i_body == j_body):
+        continue
+      rx = rx_vec[j] - rx_vec[i]
+      ry = ry_vec[j] - ry_vec[i]
+      rz = rz_vec[j] - rz_vec[i]
+
+      # Use distance with PBC
+      if Lx > 0:
+        rx = rx - int(rx / Lx + 0.5 * (int(rx>0) - int(rx<0))) * Lx
+      if Ly > 0:
+        ry = ry - int(ry / Ly + 0.5 * (int(ry>0) - int(ry<0))) * Ly
+      if Lz > 0:
+        rz = rz - int(rz / Lz + 0.5 * (int(rz>0) - int(rz<0))) * Lz
+
+      # Compute distance
+      if dim == '2d' :
+        r_norm = np.sqrt(rx*rx + ry*ry)
+      else:
+        r_norm = np.sqrt(rx*rx + ry*ry + rz*rz)
+      xbin = int(r_norm / dbin)
+      if xbin < nbins:
+        gr[xbin, :] += 2
+
+  return gr
+
+
+def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=None, L=np.ones(3), dim='3d', name=None, header=''):
+  '''
+  Compute radial distribution function between bodies or blobs.
+  It assumes all bodies are the same.
+
+  dim=3d, 2d or q2d (treat as 3d but normalize as 2d).
+  '''
+  # Prepare variables
+  M = x.shape[0] if x.shape[0] < num_frames else num_frames
+  if r_vectors is not None:
+    Nblobs_body = r_vectors.size // 3
+    N = x.shape[1] * Nblobs_body
+  else:
+    Nblobs_body = 0
+    N = x.shape[1] 
+  dbin = rcut / nbins
+  gr = np.zeros((nbins, 3))
+  gr[:,0] = np.linspace(0, rcut, num=nbins+1)[:-1] + dbin / 2
+
+  # Loop over frames
+  for i, xi in enumerate(x[0:M]):
+    if r_vectors is None:
+      z = xi[:,0:3]
+    else:
+      z = np.zeros((N, 3))
+      for j, y in enumerate(xi):
+        theta = y[3:8]
+        R = rotation_matrix(theta)
+        r = np.dot(r_vectors, R.T) + y[0:3]
+        r = r.reshape((r.size // 3, 3))
+        z[Nblobs_body * j: Nblobs_body * (j+1)] = r
+    
+    # Project to PBC
+    z = project_to_periodic_image(np.copy(z), L)
+
+    # Set box dimensions for PBC
+    if L[0] > 0 or L[1] > 0 or L[2] > 0:
+      boxsize = np.zeros(3)
+      for i in range(3):
+        if L[i] > 0:
+          boxsize[i] = L[i]
+        else:
+          boxsize[i] = (np.max(r_vectors[:,i]) - np.min(r_vectors[:,i])) + d_max * 10
+    else:
+      boxsize = None   
+
+    # Build tree 
+    tree = scsp.cKDTree(z, boxsize=boxsize)
+    pairs = tree.query_ball_tree(tree, rcut)
+    offsets = np.zeros(len(pairs)+1, dtype=int)
+    for j in range(len(pairs)):
+      offsets[j+1] = offsets[j] + len(pairs[j])
+    list_of_neighbors = np.concatenate(pairs).ravel()
+
+    gri = gr_numba(z, L, list_of_neighbors, offsets, rcut, nbins, dim, Nblobs_body)
+    gr[:,1:3] += gri[:]
+      
+  # Normalize gr
+  if dim == '3d':
+    factor = (4 * np.pi / 3) * ((gr[:,0] + dbin)**3 - (gr[:,0] - dbin)**3) * M * N**2 / (L[0] * L[1] * L[2])
+    gr[:,1] = gr[:,1] / factor
+  else:
+    factor = np.pi * ((gr[:,0] + dbin)**2 - (gr[:,0] - dbin)**2) * M * N**2 / (L[0] * L[1])
+    gr[:,1] = gr[:,1] / factor
+
+  # Save gr
+  if name is not None:
+    if len(header) == 0:
+      header='Columns: r, gr density, gr count number'
+      np.savetxt(name, gr, header=header)
+
+  return gr
