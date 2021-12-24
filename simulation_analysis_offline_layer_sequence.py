@@ -5,13 +5,13 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2111/run2111'
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2113/run2113'
   second_index = 0
   indices = np.arange(0, 7, dtype=int)
   N_skip_stresslet = 0
   N_skip = 1
   N_hist = 4
-  number_simulation = 2111
+  number_simulation = 2113
   N_samples = 2
   print('indices = ', indices)
 

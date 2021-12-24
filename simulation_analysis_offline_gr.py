@@ -48,7 +48,10 @@ if __name__ == '__main__':
   # Concatenate config files
   x = np.concatenate([xi for xi in x])
   num_frames = x.shape[0] if x.shape[0] < num_frames else num_frames
-  num_frames_skip = num_frames // num_frames_skip_fraction
+  if num_frames_skip_fraction > 0:
+    num_frames_skip = num_frames // num_frames_skip_fraction
+  else:
+    num_frames_skip = 0
   print('total number of frames = ', x.shape[0])
   print('num_frames             = ', num_frames)
   print('num_frames_skip        = ', num_frames_skip)
