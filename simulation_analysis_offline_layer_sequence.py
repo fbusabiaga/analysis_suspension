@@ -174,7 +174,7 @@ if __name__ == '__main__':
         D_error += (j - N_skip) * (D - D_mean)**2 / (j - N_skip + 1)
         D_mean += (D - D_mean) / (j - N_skip + 1)
       print('D = ', D)
-    D_error = np.sqrt(D_error) / np.maximum(1, N_hist - N_skip) / np.maximum(1, N_hist - N_skip - 1))
+    D_error = np.sqrt(D_error / np.maximum(1, N_hist - N_skip) / np.maximum(1, N_hist - N_skip - 1))
     print('D = ', D_mean, ' +/-', D_error)
     print('\n')
 
