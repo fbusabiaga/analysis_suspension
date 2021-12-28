@@ -604,8 +604,8 @@ def msd(x, dt, MSD_steps=None, output_name=None, header=''):
   if output_name is not None:
     if len(header) == 0:
       header = 'Columns: linear MSD (9 terms)'
-    print('MSD_average = ', MSD_average.shape)
     MSD_average = MSD_average.reshape(MSD.size // 9, 9)
+    MSD_std = MSD_std.reshape(MSD.size // 9, 9)
     result = np.zeros((MSD_steps, 10))
     result[:,0] = np.arange(MSD_steps) * dt
     result[:,1:10] = MSD_average[0:MSD_steps]

@@ -5,18 +5,18 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2113/run2113'
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110'
   second_index = 0
   indices = np.arange(0, 7, dtype=int)
   N_skip_stresslet = 0
   N_skip = 1
   N_hist = 4
-  number_simulation = 2113
-  N_samples = 2
+  number_simulation = 2110
+  N_samples = 3
   print('indices = ', indices)
 
   # Prepare viscosity file
-  eta_files = np.zeros((len(indices), 11))
+  eta_files = np.zeros((len(indices), 13))
   eta_files[:,0] = number_simulation
   
   # Loop over files
@@ -163,6 +163,21 @@ if __name__ == '__main__':
     print('|R| / D = ', rotlet_norm / np.linalg.norm(force_moment_avg))
     print('\n')
 
+    D_mean = 0
+    D_error = 0
+    D_error_mean = 0
+    for j in range(N_hist):
+      name = file_prefix + '.' + str(i) + '.' + str(second_index) + '.base.msd.' + str(j).zfill(4) + '.dat' 
+      msd, msd_std = sa.msd(x[N_avg * j : N_avg * (j+1)], dt_sample, MSD_steps=num_frames, output_name=name)
+      D = msd[1,4] / (2 * dt_sample)
+      if j >= N_skip:
+        D_error += (j - N_skip) * (D - D_mean)**2 / (j - N_skip + 1)
+        D_mean += (D - D_mean) / (j - N_skip + 1)
+      print('D = ', D)
+    D_error = np.sqrt(D_error) / np.maximum(1, N_hist - N_skip) / np.maximum(1, N_hist - N_skip - 1))
+    print('D = ', D_mean, ' +/-', D_error)
+    print('\n')
+
     # Store viscosity
     eta_files[k,1] = i
     eta_files[k,2] = N
@@ -175,9 +190,11 @@ if __name__ == '__main__':
     eta_files[k,8] = eta_stresslet_mean
     eta_files[k,9] = eta_stresslet_std_error
     eta_files[k,10] = num_frames * dt_sample
+    eta_files[k,11] = D_mean
+    eta_files[k,12] = D_error
     
   # Save visocity
   name = file_prefix + '.' + str(indices[0]) + '-' + str(indices[-1]) + '.' + str(second_index) + '.base.viscosities.dat'
-  np.savetxt(name, eta_files, header='Columns (11): 0=simulation number, 1=index, 2=number particles, 3=gamma_dot, 4=shear_rate (measured), \n5=shear_rate_std, 6=viscosity (from velocity profile), 7=standard error, 8=viscosity (from stresslet), 9=standard error, 10=time')
+  np.savetxt(name, eta_files, header='Columns (11): 0=simulation number, 1=index, 2=number particles, 3=gamma_dot, 4=shear_rate (measured), \n5=shear_rate_std, 6=viscosity (from velocity profile), 7=standard error, 8=viscosity (from stresslet), 9=standard error, 10=time, 11=D(yy,t=dt_sample), 12=D_error(yy,t=dt_sample)')
 
   
