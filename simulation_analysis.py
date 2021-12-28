@@ -81,6 +81,32 @@ def read_config(name):
   return x
 
 
+def read_config_list(names, print_name=False):
+  '''
+  Read list of config files x_0, x_1, x_2 ... 
+  It is assumed that the first snapshot of the file x_{n+1} is the same that the last
+  snapshot of the file x_n.
+
+  The config is stored in an array of shape (num_frames, num_bodies, 7).
+  '''
+
+  # Loop over files
+  x = []
+  for j, name in enumerate(names):
+    if print_name:
+      print('name_config = ', name)
+
+    xj = read_config(name)
+    if j == 0 and xj.size > 0:
+      x.append(xj)
+    elif xj.size > 0:
+      x.append(xj[1:])
+
+  # Concatenate configs
+  x = np.concatenate([xi for xi in x])
+  return x
+
+
 def read_particle_number(name):
   '''
   Read the number of particles from the config file.

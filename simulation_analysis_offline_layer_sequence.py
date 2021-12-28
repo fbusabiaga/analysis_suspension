@@ -51,18 +51,10 @@ if __name__ == '__main__':
     print(' ')
   
     # Read config
-    x = []
+    names_config = []
     for j in range(N_samples):
-      name_config = file_prefix + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.star_run' + str(number_simulation) + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.config'
-      print('name_config = ', name_config)
-
-      xj = sa.read_config(name_config)
-      if j == 0 and xj.size > 0:
-        x.append(xj)
-      elif xj.size > 0:
-        x.append(xj[1:])
-      
-    x = np.concatenate([xi for xi in x])
+      names_config.append(file_prefix + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.star_run' + str(number_simulation) + '.' + str(i) + '.' + str(second_index) + '.' + str(j) + '.config')
+    x = sa.read_config_list(names_config, print_name=True)
     num_frames = x.shape[0]
     num_frames_vel = num_frames - 1
     N_avg = (num_frames-1) // N_hist
