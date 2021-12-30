@@ -186,13 +186,17 @@ def compute_velocities(x, dt=1, frame_rate=1):
   return v
 
 
-def compute_histogram_from_frames(sample, value, column_sample=0, column_value=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, file_prefix=None):
+def compute_histogram_from_frames(sample, value=None, column_sample=0, column_value=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, file_prefix=None):
   '''
   Compute histogram averages. Use column_sample to select the bin and column_value to compute the average.
+  If value is None use a density histogram.
   '''
   
   # Loop over steps
-  N_frames = np.minimum(sample.shape[0], value.shape[0])
+  if value is None:
+    N_frames = sample.shape[0]
+  else:
+    N_frames = np.minimum(sample.shape[0], value.shape[0])
   N_steps = N_frames // N_avg
   h = np.zeros((N_steps, num_intervales, 3))
   for i in range(N_steps):
@@ -202,7 +206,11 @@ def compute_histogram_from_frames(sample, value, column_sample=0, column_value=0
 
     for j in range(N_avg):
       # Created binned average
-      mean, bin_edges, binnumber = scst.binned_statistic_dd(sample[i*N_avg + j, :, column_sample], value[i*N_avg + j, :, column_value], bins=num_intervales, range=[[xmin, xmax]], statistic='mean')
+      if value is None:
+        mean, bin_edges = np.histogram(sample[i*N_avg + j, :, column_sample], num_intervales, range=(xmin, xmax), density=True)
+        bin_edges = bin_edges.reshape(1, bin_edges.size)
+      else:
+        mean, bin_edges, binnumber = scst.binned_statistic_dd(sample[i*N_avg + j, :, column_sample], value[i*N_avg + j, :, column_value], bins=num_intervales, range=[[xmin, xmax]], statistic='mean')
 
       # Select only non empty bins
       sel = ~np.isnan(mean)      
@@ -223,7 +231,7 @@ def compute_histogram_from_frames(sample, value, column_sample=0, column_value=0
   return h
 
 
-def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, header='', name=None):
+def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, header='', name=None):
   '''
   Compute histogram averages. 
   '''
@@ -472,7 +480,7 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
     Nblobs_body = r_vectors.size // 3
     N = x.shape[1] * Nblobs_body
   else:
-    Nblobs_body = 0
+    Nblobs_body = 1
     N = x.shape[1] 
   dbin = rcut / nbins
   gr = np.zeros((nbins, 3))
@@ -501,7 +509,7 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
         if L[i] > 0:
           boxsize[i] = L[i]
         else:
-          boxsize[i] = (np.max(r_vectors[:,i]) - np.min(r_vectors[:,i])) + rcut * 10
+          boxsize[i] = (np.max(z[:,i]) - np.min(z[:,i])) + rcut * 10
     else:
       boxsize = None   
 
