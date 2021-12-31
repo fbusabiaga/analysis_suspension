@@ -526,10 +526,10 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
       
   # Normalize gr
   if dim == '3d':
-    factor = (4 * np.pi / 3) * ((gr[:,0] + dbin)**3 - (gr[:,0] - dbin)**3) * M * N**2 / (L[0] * L[1] * L[2])
+    factor = (4 * np.pi / 3) * ((gr[:,0] + dbin / 2)**3 - (gr[:,0] - dbin / 2)**3) * M * N**2 / (L[0] * L[1] * L[2])
     gr[:,1] = gr[:,1] / factor
   else:
-    factor = np.pi * ((gr[:,0] + dbin)**2 - (gr[:,0] - dbin)**2) * M * N**2 / (L[0] * L[1])
+    factor = np.pi * ((gr[:,0] + dbin / 2)**2 - (gr[:,0] - dbin / 2)**2) * M * N**2 / (L[0] * L[1])
     gr[:,1] = gr[:,1] / factor
 
   # Save gr
