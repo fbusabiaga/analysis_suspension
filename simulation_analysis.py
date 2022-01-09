@@ -3,6 +3,7 @@ import scipy.stats as scst
 import scipy.optimize as scop
 import scipy.spatial as scsp
 import sys
+import time
 try:
   import matplotlib.pyplot as plt
 except ImportError as e:
@@ -13,6 +14,46 @@ except ImportError as e:
   njit=None
   print(e)
 
+
+# Static Variable decorator for calculating acceptance rate.
+def static_var(varname, value):
+  def decorate(func):
+    setattr(func, varname, value)
+    return func
+  return decorate
+
+
+@static_var('timers', {})   
+def timer(name, print_one = False, print_all = False, clean_all = False, file_name = None):
+  '''
+  Timer to profile the code. It measures the time elapsed between successive
+  calls and it prints the total time elapsed after sucesive calls.  
+  '''
+  if name is not None:
+    if name not in timer.timers:
+      timer.timers[name] = (0, time.time())
+    elif timer.timers[name][1] is None:
+      time_tuple = (timer.timers[name][0],  time.time())
+      timer.timers[name] = time_tuple
+    else:
+      time_tuple = (timer.timers[name][0] + (time.time() - timer.timers[name][1]), None)
+      timer.timers[name] = time_tuple
+      if print_one is True:
+        print(name, ' = ', timer.timers[name][0])
+
+  if print_all is True and len(timer.timers) > 0:
+    print('\n')
+    col_width = max(len(key) for key in timer.timers)
+    for key in sorted(timer.timers):
+      print("".join(key.ljust(col_width)), ' = ', timer.timers[key][0])
+    if file_name is not None:
+      with open(file_name, 'w') as f_handle:
+        for key in sorted(timer.timers):
+          f_handle.write("".join(key.ljust(col_width)) + ' = ' + str(timer.timers[key][0]) + '\n')
+      
+  if clean_all:
+    timer.timers = {}
+  return
 
 
 def read_input(name):
@@ -647,3 +688,96 @@ def msd(x, dt, MSD_steps=None, output_name=None, header=''):
 
   return MSD_average, MSD_std
 
+
+@njit(parallel=False, fastmath=True)
+def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
+  '''
+  Detect to which cluster belongs each body.
+  '''
+  cluster_i = np.ones(N // Nblobs_body, dtype=np.int32) * (N // Nblobs_body)
+
+  # Loop over bodies
+  for j in prange(N):
+    j_body = j // Nblobs_body
+    min_body = j_body
+
+    # Loop over neighbors: find lower body index
+    for k in range(offsets[j+1] - offsets[j]):
+      l = list_of_neighbors[offsets[j] + k]
+      l_body = l // Nblobs_body
+      if l_body < min_body:
+        min_body = l_body
+
+    # Set lower body index
+    if offsets[j+1] - offsets[j] > 0:
+      cluster_i[j_body] = min_body
+    for k in range(offsets[j+1] - offsets[j]):
+      l = list_of_neighbors[offsets[j] + k]
+      l_body = l // Nblobs_body
+      cluster_i[l_body] = min_body
+
+  return cluster_i
+
+
+def cluster_detection(x, num_frames, rcut=1.0, r_vectors=None, L=np.ones(3), name=None, header=''):
+  '''
+  Detect clusters of bodies. Clusters are defined when blobs, or bodies if r_vectors=None, are nearer than rcut.
+
+  It returns array of shape (num_frames, num_bodies) the value labels the cluster to which the body belongs. 
+  We use the notation lable=-1 if the body does not belong to a cluster,
+  and label=min(body_index_in_cluster).
+  '''
+  # Prepare variables
+  M = x.shape[0] if x.shape[0] < num_frames else num_frames
+  if r_vectors is not None:
+    Nblobs_body = r_vectors.size // 3
+    N = x.shape[1] * Nblobs_body
+  else:
+    Nblobs_body = 1
+    N = x.shape[1]
+  clusters = np.ones((M, x.shape[1]), dtype=int) * x.shape[1]
+
+  # Loop over frames
+  for i, xi in enumerate(x[0:M]):
+    if r_vectors is None:
+      z = xi[:,0:3]
+    else:
+      z = np.zeros((N, 3))
+      for j, y in enumerate(xi):
+        theta = y[3:8]
+        R = rotation_matrix(theta)
+        r = np.dot(r_vectors, R.T) + y[0:3]
+        r = r.reshape((r.size // 3, 3))
+        z[Nblobs_body * j: Nblobs_body * (j+1)] = r
+    
+    # Project to PBC
+    z = project_to_periodic_image(np.copy(z), L)
+
+    # Set box dimensions for PBC
+    if L[0] > 0 or L[1] > 0 or L[2] > 0:
+      boxsize = np.zeros(3)
+      for i in range(3):
+        if L[i] > 0:
+          boxsize[i] = L[i]
+        else:
+          boxsize[i] = (np.max(z[:,i]) - np.min(z[:,i])) + rcut * 10
+    else:
+      boxsize = None   
+
+    # Build tree 
+    tree = scsp.cKDTree(z, boxsize=boxsize)
+    pairs = tree.query_ball_tree(tree, rcut)
+    offsets = np.zeros(len(pairs)+1, dtype=int)
+    for j in range(len(pairs)):
+      offsets[j+1] = offsets[j] + len(pairs[j])
+    list_of_neighbors = np.concatenate(pairs).ravel()
+
+    # Detect clusters in frame i
+    cluster_i = cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body)
+    clusters[i] = cluster_i
+          
+  # Set values to -1 if body does not belong to any cluster
+  sel = clusters == N
+  clusters[sel] = -1
+  
+  return clusters
