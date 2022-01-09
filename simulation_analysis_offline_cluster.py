@@ -5,10 +5,10 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110.2.0.0'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110.2.0.0.star_run2110.2.0.0.config'] 
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110.5.0.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110.5.0.0.star_run2110.5.0.0.config'] 
   name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/rheology/Structures/star_N_13_a_0.05.vertex'
-  num_frames = 200
+  num_frames = 1000
   num_frames_skip_fraction = 4
   rcut = 0.1
   nbins = 100
@@ -34,19 +34,9 @@ if __name__ == '__main__':
     L = L_gr   
   print('L         = ', L)
   print(' ')
-  
-  # Loop over config files
-  x = []
-  for j, name_config in enumerate(files_config):
-    print('name_config = ', name_config)
-    xj = sa.read_config(name_config)
-    if j == 0 and xj.size > 0:
-      x.append(xj)
-    elif xj.size > 0:
-      x.append(xj[1:])
 
-  # Concatenate config files
-  x = np.concatenate([xi for xi in x])
+  # Read config
+  x = sa.read_config_list(files_config, print_name=True)
   num_frames = x.shape[0] if x.shape[0] < num_frames else num_frames
   if num_frames_skip_fraction > 0:
     num_frames_skip = num_frames // num_frames_skip_fraction
@@ -57,13 +47,27 @@ if __name__ == '__main__':
   print('num_frames_skip        = ', num_frames_skip)
   print(' ')
 
+  # Skip frames
+  x = x[num_frames_skip:]
+
   # Detect clusters
-  sa.timer('cluster')
   clusters = sa.cluster_detection(x, num_frames, rcut=rcut, r_vectors=r_vectors, L=L)
-  sa.timer('cluster')
 
-  print('clusters = ', clusters.shape)
+  # Fraction of bodies in a cluster
+  sel = clusters.flatten() > -1
+  fraction_in_cluster = np.sum(sel) / sel.size
+  print('fraction_in_cluster = ', fraction_in_cluster)
 
-  sa.timer('', print_all=True)
+  # Cluster size histogram
+  
+  # Escape time 
 
+  # Cluster length 
+
+  # xyz 
+
+  
+  
+
+  
   

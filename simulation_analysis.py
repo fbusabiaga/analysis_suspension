@@ -546,11 +546,11 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
     # Set box dimensions for PBC
     if L[0] > 0 or L[1] > 0 or L[2] > 0:
       boxsize = np.zeros(3)
-      for i in range(3):
-        if L[i] > 0:
-          boxsize[i] = L[i]
+      for j in range(3):
+        if L[j] > 0:
+          boxsize[j] = L[j]
         else:
-          boxsize[i] = (np.max(z[:,i]) - np.min(z[:,i])) + rcut * 10
+          boxsize[j] = (np.max(z[:,j]) - np.min(z[:,j])) + rcut * 10
     else:
       boxsize = None   
 
@@ -700,21 +700,25 @@ def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
   for j in prange(N):
     j_body = j // Nblobs_body
     min_body = j_body
+    neighbor = 0
 
     # Loop over neighbors: find lower body index
     for k in range(offsets[j+1] - offsets[j]):
       l = list_of_neighbors[offsets[j] + k]
       l_body = l // Nblobs_body
+      if l_body == j_body:
+        continue
+      neighbor = 1
       if l_body < min_body:
         min_body = l_body
-
+        
     # Set lower body index
-    if offsets[j+1] - offsets[j] > 0:
+    if neighbor > 0:
       cluster_i[j_body] = min_body
-    for k in range(offsets[j+1] - offsets[j]):
-      l = list_of_neighbors[offsets[j] + k]
-      l_body = l // Nblobs_body
-      cluster_i[l_body] = min_body
+      for k in range(offsets[j+1] - offsets[j]):
+        l = list_of_neighbors[offsets[j] + k]
+        l_body = l // Nblobs_body
+        cluster_i[l_body] = min_body
 
   return cluster_i
 
@@ -756,15 +760,15 @@ def cluster_detection(x, num_frames, rcut=1.0, r_vectors=None, L=np.ones(3), nam
     # Set box dimensions for PBC
     if L[0] > 0 or L[1] > 0 or L[2] > 0:
       boxsize = np.zeros(3)
-      for i in range(3):
-        if L[i] > 0:
-          boxsize[i] = L[i]
+      for j in range(3):
+        if L[j] > 0:
+          boxsize[j] = L[j]
         else:
-          boxsize[i] = (np.max(z[:,i]) - np.min(z[:,i])) + rcut * 10
+          boxsize[j] = (np.max(z[:,j]) - np.min(z[:,j])) + rcut * 10
     else:
       boxsize = None   
 
-    # Build tree 
+    # Build tree
     tree = scsp.cKDTree(z, boxsize=boxsize)
     pairs = tree.query_ball_tree(tree, rcut)
     offsets = np.zeros(len(pairs)+1, dtype=int)
@@ -774,10 +778,11 @@ def cluster_detection(x, num_frames, rcut=1.0, r_vectors=None, L=np.ones(3), nam
 
     # Detect clusters in frame i
     cluster_i = cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body)
+    sel = cluster_i == (N // Nblobs_body)
     clusters[i] = cluster_i
           
   # Set values to -1 if body does not belong to any cluster
-  sel = clusters == N
+  sel = clusters == (N // Nblobs_body)
   clusters[sel] = -1
   
   return clusters

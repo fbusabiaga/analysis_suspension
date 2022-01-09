@@ -34,19 +34,9 @@ if __name__ == '__main__':
     L = L_gr   
   print('L         = ', L)
   print(' ')
-  
-  # Loop over config files
-  x = []
-  for j, name_config in enumerate(files_config):
-    print('name_config = ', name_config)
-    xj = sa.read_config(name_config)
-    if j == 0 and xj.size > 0:
-      x.append(xj)
-    elif xj.size > 0:
-      x.append(xj[1:])
 
-  # Concatenate config files
-  x = np.concatenate([xi for xi in x])
+  # Read config
+  x = sa.read_config_list(files_config, print_name=True)
   num_frames = x.shape[0] if x.shape[0] < num_frames else num_frames
   if num_frames_skip_fraction > 0:
     num_frames_skip = num_frames // num_frames_skip_fraction
