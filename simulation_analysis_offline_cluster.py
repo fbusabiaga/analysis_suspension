@@ -8,7 +8,7 @@ if __name__ == '__main__':
   file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110.5.0.0'
   files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2110/run2110.5.0.0.star_run2110.5.0.0.config'] 
   name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/rheology/Structures/star_N_13_a_0.05.vertex'
-  num_frames = 1000
+  num_frames = 10
   num_frames_skip_fraction = 4
   rcut = 0.1
   nbins = 100
@@ -59,10 +59,31 @@ if __name__ == '__main__':
   print('fraction_in_cluster = ', fraction_in_cluster)
 
   # Cluster size histogram
-  
-  # Escape time 
+  num_colloids_in_cluster = []
+  for j, cj in enumerate(clusters):
+    for k in range(cj.size):
+      index = cj[k]
+      if index == k:
+        colloids_indexes = np.argwhere(cj == index)
+        num_colloids_in_cluster.append(colloids_indexes.size)
+      if index == -1:
+        num_colloids_in_cluster.append(1)
+  num_colloids_in_cluster = np.array(num_colloids_in_cluster, dtype=int).flatten() 
+  name = file_prefix + '.histogram.cluster_size.dat'
+  sa.compute_histogram(num_colloids_in_cluster, num_intervales=np.max(num_colloids_in_cluster)+1, xmin=-0.5, xmax=np.max(num_colloids_in_cluster)+0.5,  name=name)
 
-  # Cluster length 
+  # Cluster mean size
+  Nc = np.sum(num_colloids_in_cluster) / num_colloids_in_cluster.size
+  print('Nc = ', Nc)  
+  sel = num_colloids_in_cluster > 1
+  Nc = np.sum(num_colloids_in_cluster[sel]) / num_colloids_in_cluster[sel].size
+  print('Nc = ', Nc)
+
+  # Cluster length
+
+  # Fractal geometry  
+
+  # Escape time 
 
   # xyz 
 

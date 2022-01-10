@@ -274,11 +274,11 @@ def compute_histogram_from_frames(sample, value=None, column_sample=0, column_va
 
 def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, header='', name=None):
   '''
-  Compute histogram averages. 
+  Compute histogram averages.  
   '''
-  
-  # Loop over steps
-  # h = np.zeros((num_intervales, 2))
+  # Reshape if necessary 
+  if sample.ndim == 1:
+    sample = sample.reshape(sample.size, 1)  
 
   # Created histogram
   h, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=True)
@@ -699,7 +699,7 @@ def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
   # Loop over bodies
   for j in prange(N):
     j_body = j // Nblobs_body
-    min_body = j_body
+    min_body = np.minimum(j_body, cluster_i[j_body])
     neighbor = 0
 
     # Loop over neighbors: find lower body index
@@ -709,8 +709,9 @@ def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
       if l_body == j_body:
         continue
       neighbor = 1
-      if l_body < min_body:
+      if l_body < min_body or cluster_i[l_body] < min_body:
         min_body = l_body
+        min_body = np.minimum(l_body, cluster_i[l_body])
         
     # Set lower body index
     if neighbor > 0:
@@ -719,7 +720,6 @@ def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
         l = list_of_neighbors[offsets[j] + k]
         l_body = l // Nblobs_body
         cluster_i[l_body] = min_body
-
   return cluster_i
 
 
@@ -778,11 +778,10 @@ def cluster_detection(x, num_frames, rcut=1.0, r_vectors=None, L=np.ones(3), nam
 
     # Detect clusters in frame i
     cluster_i = cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body)
+
+    # Set values to -1 if body does not belong to any cluster
     sel = cluster_i == (N // Nblobs_body)
+    cluster_i[sel] = -1
     clusters[i] = cluster_i
-          
-  # Set values to -1 if body does not belong to any cluster
-  sel = clusters == (N // Nblobs_body)
-  clusters[sel] = -1
   
   return clusters
