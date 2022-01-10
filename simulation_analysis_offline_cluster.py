@@ -63,7 +63,7 @@ if __name__ == '__main__':
 
   # Cluster size histogram
   num_colloids_in_cluster = []
-  length = []
+  cluster_length = []
   for j, cj in enumerate(clusters):
     for k in range(cj.size):
       index = cj[k]
@@ -103,11 +103,12 @@ if __name__ == '__main__':
 
         # Get maximum length
         dr = np.sqrt(dx**2 + dy**2 + dz**2).flatten()
-        length.append(np.max(dr))
+        cluster_length.append(np.max(dr))
       if index == -1:
         num_colloids_in_cluster.append(1)
-        length.append(0)
-  num_colloids_in_cluster = np.array(num_colloids_in_cluster, dtype=int).flatten() 
+        cluster_length.append(0)
+  num_colloids_in_cluster = np.array(num_colloids_in_cluster, dtype=int).flatten()
+  cluster_length = np.array(cluster_length).flatten() 
   name = file_prefix + '.histogram.cluster_size.dat'
   sa.compute_histogram(num_colloids_in_cluster, num_intervales=np.max(num_colloids_in_cluster)+1, xmin=-0.5, xmax=np.max(num_colloids_in_cluster)+0.5,  name=name)
 
@@ -119,6 +120,16 @@ if __name__ == '__main__':
   print('Nc = ', Nc)
 
   # Cluster length
+  name = file_prefix + '.histogram.cluster_length.dat'
+  sort = np.sort(cluster_length)
+  sa.compute_histogram(cluster_length, num_intervales=int(np.sqrt(cluster_length.size))+1, xmin=0, xmax=2*sort[-1]-sort[-2],  name=name)
+
+  # Cluster mean length
+  Lc = np.sum(cluster_length) / cluster_length.size
+  print('Lc = ', Lc)  
+  sel = cluster_length > 0
+  Lc = np.sum(cluster_length[sel]) / cluster_length[sel].size
+  print('Lc = ', Lc)
 
   # Fractal geometry  
 
