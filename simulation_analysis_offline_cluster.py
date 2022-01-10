@@ -14,7 +14,7 @@ if __name__ == '__main__':
   nbins = 100
   dim = '3d' # '3d', '2d' or 'q2d'
   gr_type = 'blobs' # 'bodies' or 'blobs'
-  L_gr = np.array([5, 5, 50])
+  L_gr = np.array([5.0, 5.0, 50.0])
   
   # Read input file
   name_input = file_prefix + '.inputfile'
@@ -23,15 +23,18 @@ if __name__ == '__main__':
   
   # Read vertex
   r_vectors = sa.read_vertex(name_vertex)
+  Nblobs_body = r_vectors.size // 3
 
   # Get number of particles
   N = sa.read_particle_number(files_config[0])
 
   # Set some parameters
+  L_periodic = np.fromstring(read.get('periodic_length'), sep=' ')
   if L_gr is None:
-    L = np.fromstring(read.get('periodic_length'), sep=' ')
+    L = L_periodic
   else:
-    L = L_gr   
+    L = L_gr
+  print('L_periodic= ', L_periodic)
   print('L         = ', L)
   print(' ')
 
@@ -60,14 +63,50 @@ if __name__ == '__main__':
 
   # Cluster size histogram
   num_colloids_in_cluster = []
+  length = []
   for j, cj in enumerate(clusters):
     for k in range(cj.size):
       index = cj[k]
       if index == k:
-        colloids_indexes = np.argwhere(cj == index)
+        colloids_indexes = np.argwhere(cj == index).flatten()
         num_colloids_in_cluster.append(colloids_indexes.size)
+
+        # Get bodies coordinates
+        r_bodies = np.zeros((colloids_indexes.size, 3))
+        for l, ind in enumerate(colloids_indexes):
+          r_bodies[l] = x[j, ind, 0:3]
+          
+        # Compute vector distance
+        rx = r_bodies[:,0]
+        ry = r_bodies[:,1]
+        rz = r_bodies[:,2]
+        dx = (rx[:,None] - rx).flatten()
+        dy = (ry[:,None] - ry).flatten()
+        dz = (rz[:,None] - rz).flatten()
+
+        # Project to PBC
+        if L_periodic[0] > 0:
+          sel_p = dx > 0
+          sel_n = dx < 0
+          dx[sel_p] = dx[sel_p] - (dx[sel_p] / L_periodic[0] + 0.5).astype(int) * L_periodic[0]
+          dx[sel_n] = dx[sel_n] - (dx[sel_n] / L_periodic[0] - 0.5).astype(int) * L_periodic[0]
+        if L_periodic[1] > 0:
+          sel_p = dy > 0
+          sel_n = dy < 0
+          dy[sel_p] = dy[sel_p] - (dy[sel_p] / L_periodic[1] + 0.5).astype(int) * L_periodic[1]
+          dy[sel_n] = dy[sel_n] - (dy[sel_n] / L_periodic[1] - 0.5).astype(int) * L_periodic[1]
+        if L_periodic[2] > 0:
+          sel_p = dz > 0
+          sel_n = dz < 0
+          dz[sel_p] = dz[sel_p] - (dz[sel_p] / L_periodic[2] + 0.5).astype(int) * L_periodic[2]
+          dz[sel_n] = dz[sel_n] - (dz[sel_n] / L_periodic[2] - 0.5).astype(int) * L_periodic[2]
+
+        # Get maximum length
+        dr = np.sqrt(dx**2 + dy**2 + dz**2).flatten()
+        length.append(np.max(dr))
       if index == -1:
         num_colloids_in_cluster.append(1)
+        length.append(0)
   num_colloids_in_cluster = np.array(num_colloids_in_cluster, dtype=int).flatten() 
   name = file_prefix + '.histogram.cluster_size.dat'
   sa.compute_histogram(num_colloids_in_cluster, num_intervales=np.max(num_colloids_in_cluster)+1, xmin=-0.5, xmax=np.max(num_colloids_in_cluster)+0.5,  name=name)
