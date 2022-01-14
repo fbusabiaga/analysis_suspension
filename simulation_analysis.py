@@ -283,11 +283,11 @@ def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1
   if scale == 'adaptive':
     num_intervales = np.array([xmin, xmax])
     counter = 0
-    while counter < max_levels:
+    while True:
       hf, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=False)
       sel = np.zeros(h_edges.size, dtype=bool)
       sel[0:-1] = hf > max_points_bin
-      if np.all(~sel):
+      if np.all(~sel) or counter >= max_levels:
         break
       h_new_edges = (h_edges[sel] + h_edges[np.where(sel==True)[0]+1]) / 2
       num_intervales = np.insert(num_intervales, np.where(sel==True)[0]+1, h_new_edges)
