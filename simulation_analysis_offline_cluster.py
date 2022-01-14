@@ -29,6 +29,7 @@ if __name__ == '__main__':
   N = sa.read_particle_number(files_config[0])
 
   # Set some parameters
+  blob_radius = float(read.get('blob_radius'))
   L_periodic = np.fromstring(read.get('periodic_length'), sep=' ')
   if L_gr is None:
     L = L_periodic
@@ -108,10 +109,19 @@ if __name__ == '__main__':
         num_colloids_in_cluster.append(1)
         cluster_length.append(0)
   num_colloids_in_cluster = np.array(num_colloids_in_cluster, dtype=int).flatten()
-  cluster_length = np.array(cluster_length).flatten() 
-  name = file_prefix + '.histogram.cluster_size.dat'
-  sa.compute_histogram(num_colloids_in_cluster, num_intervales=np.max(num_colloids_in_cluster)+1, xmin=-0.5, xmax=np.max(num_colloids_in_cluster)+0.5,  name=name)
+  cluster_length = np.array(cluster_length).flatten()
 
+  # Cluster size
+  name = file_prefix + '.histogram.cluster_size.dat'
+  sort = np.sort(num_colloids_in_cluster)
+  xmin = 0
+  xmax = 2*sort[-1]-sort[-2]
+  max_points_bin = int(np.sqrt(cluster_length.size))+1
+  max_levels = np.log2(xmax - xmin) - 2
+  sa.compute_histogram(num_colloids_in_cluster, xmin=xmin, xmax=xmax,
+                       scale='adaptive', max_points_bin=max_points_bin, max_levels=max_levels,
+                       name=name)
+  
   # Cluster mean size
   Nc = np.sum(num_colloids_in_cluster) / num_colloids_in_cluster.size
   print('Nc = ', Nc)  
@@ -122,7 +132,13 @@ if __name__ == '__main__':
   # Cluster length
   name = file_prefix + '.histogram.cluster_length.dat'
   sort = np.sort(cluster_length)
-  sa.compute_histogram(cluster_length, num_intervales=int(np.sqrt(cluster_length.size))+1, xmin=0, xmax=2*sort[-1]-sort[-2],  name=name)
+  xmin = 0
+  xmax = 2*sort[-1]-sort[-2]
+  max_points_bin = int(np.sqrt(cluster_length.size))+1
+  max_levels = np.log2((xmax - xmin) / blob_radius) - 2
+  sa.compute_histogram(cluster_length, xmin=xmin, xmax=xmax,
+                       scale='adaptive', max_points_bin=max_points_bin, max_levels=max_levels,
+                       name=name)
 
   # Cluster mean length
   Lc = np.sum(cluster_length) / cluster_length.size

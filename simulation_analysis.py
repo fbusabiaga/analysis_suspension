@@ -272,33 +272,26 @@ def compute_histogram_from_frames(sample, value=None, column_sample=0, column_va
   return h
 
 
-def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, scale='linear', min_width=1, header='', name=None):
+def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, scale='linear', max_points_bin=10, max_levels=10, header='', name=None):
   '''
   Compute histogram averages.  
   '''
   # Reshape if necessary 
   if sample.ndim == 1:
     sample = sample.reshape(sample.size, 1)  
-    
-  if scale == 'log':
-    # Set number of intervals and range 
-    N = sample.shape[0] 
-    sample = np.sort(sample) 
-    end = (sample[-1] + sample[-int(np.sqrt(N) / 2)]) / 2.0 
-    num_intervales = max(2, int(np.sqrt(N)) + 1) 
-    xbin = np.logspace(0 , 2, num=num_intervales)
-    xbin = (xbin - 1.0) * (xmax - xmin) / 99.0 + xmin
-    xbin = np.unique(np.around(xbin, decimals=3))
-    position = 0
-    while True:
-      if position < xbin.size - 1:
-        if xbin[position+1] - xbin[position] < min_width:
-          xbin = np.delete(xbin, position+1)
-        else:
-          position += 1
-      else:
+
+  if scale == 'adaptive':
+    num_intervales = np.array([xmin, xmax])
+    counter = 0
+    while counter < max_levels:
+      hf, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=False)
+      sel = np.zeros(h_edges.size, dtype=bool)
+      sel[0:-1] = hf > max_points_bin
+      if np.all(~sel):
         break
-    num_intervales = np.unique(np.around(xbin, decimals=3))
+      h_new_edges = (h_edges[sel] + h_edges[np.where(sel==True)[0]+1]) / 2
+      num_intervales = np.insert(num_intervales, np.where(sel==True)[0]+1, h_new_edges)
+      counter += 1
 
   # Created histogram
   h, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=True)
