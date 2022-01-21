@@ -15,7 +15,7 @@ if __name__ == '__main__':
   name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/chiral/Structures/rod_Lg_1.664_Rg_0.416_Nx_6_Ntheta_6.vertex'
   num_frames = 1000
   save_blobs = True
-  save_dipole = False
+  save_dipole = True
   save_velocity = False
   save_dat_index = [0,4]
 
@@ -42,17 +42,9 @@ if __name__ == '__main__':
   print(' ')
 
   # Loop over config files
-  x = []
-  for j, name_config in enumerate(files_config):
-    print('name_config = ', name_config)
-    xj = sa.read_config(name_config)
-    if j == 0 and xj.size > 0:
-      x.append(xj)
-    elif xj.size > 0:
-      x.append(xj[1:])
+  x = sa.read_config_list(files_config, print_name=True)
 
   # Concatenate config files
-  x = np.concatenate([xi for xi in x])
   t = np.arange(x.shape[0]) * dt_sample
   print('total number of frames = ', x.shape[0])
   print('num_frames             = ', num_frames)
@@ -68,8 +60,6 @@ if __name__ == '__main__':
     # Compute velocity
     name = file_prefix + '.' + structure + '.velocity.xyz'    
     velocity = sa.compute_velocities(x, dt=dt_sample)
-    force = np.zeros((num_frames, 3))
-    force[:,0] = 1
     sa.save_xyz(x, np.zeros(3), name, num_frames=num_frames, letter=structure[0].upper(), body_vector=velocity, header='Columns: r, velocity')
 
   # Save dat file
@@ -77,9 +67,7 @@ if __name__ == '__main__':
     for i in save_dat_index:
       name = file_prefix + '.' + structure + '.' + str(i) + '.dat'
       sa.save_dat(x, t, i, name)
-
       
-
   # Save dipole as xyz file
   if save_dipole:
     dipole_0 = np.fromstring(read.get('mu'), sep=' ')

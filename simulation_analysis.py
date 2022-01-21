@@ -125,7 +125,7 @@ def read_config(name):
 def read_config_list(names, print_name=False):
   '''
   Read list of config files x_0, x_1, x_2 ... 
-  It is assumed that the first snapshot of the file x_{n+1} is the same that the last
+  It is assumed that the first snapshot of the file x_{n+1} is the same as the last
   snapshot of the file x_n.
 
   The config is stored in an array of shape (num_frames, num_bodies, 7).
@@ -187,6 +187,32 @@ def read_vertex(name):
 
   coor = np.array(coor)
   return coor
+
+
+def read_vertex_file_list(name_files, path=None):
+  '''
+  It reads a file with a list of vertex files.
+  It returns a list, each element the coordinates of the blobs in a rigid body.
+  '''
+  comment_symbols = ['#']   
+  struct_ref_config = []
+  with open(name_files) as f:
+    for line in f:
+      # Strip comments
+      if comment_symbols[0] in line:
+        line, comment = line.split(comment_symbols[0], 1)
+
+      # Ignore blank lines
+      line = line.strip()
+      if line != '':
+        if path is None:
+          name = line.split()[0]
+        else:
+          name = name_files[0:-len(name_files.split('/')[-1])] + path + line.split()[0]
+        struct = read_vertex(name)
+        struct_ref_config.append(struct)      
+
+  return struct_ref_config
 
     
 def compute_velocities(x, dt=1, frame_rate=1):
@@ -397,13 +423,23 @@ def rotation_matrix(theta):
                            [p[2]*p[0]-s*p[1], p[2]*p[1]+s*p[0], p[2]**2+diag]])
 
 
-def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=None, body_vector=None, global_vector=None, header=''):
+def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None, header=''):
   '''
   Save xyz file.
   '''
   # Save M frames
   M = x.shape[0] if x.shape[0] < num_frames else num_frames
-  Nblobs = x.shape[1] * r_vectors.size // 3
+
+  # Check if it is an articulated body
+  if articulated:
+    Nrigid = len(r_vectors)
+    Nblobs = x.shape[1] * np.sum([r.size // 3 for r in r_vectors]) // Nrigid
+  else:
+    Nblobs = x.shape[1] * r_vectors.size // 3
+    Nrigid = 1
+    r_vectors = r_vectors.reshape((1, r_vectors.size // 3, 3))
+
+  # Open output file
   file_output = open(name, 'w')
 
   # Loop over frames
@@ -419,7 +455,7 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', body_frame_vector=Non
     for j, y in enumerate(xi):
       theta = y[3:8]
       R = rotation_matrix(theta)
-      r = np.dot(r_vectors, R.T) + y[0:3]
+      r = np.dot(r_vectors[j % Nrigid], R.T) + y[0:3]
       r = r.reshape((r.size // 3, 3))
 
       if body_frame_vector is not None:
