@@ -208,7 +208,7 @@ def read_vertex_file_list(name_files, path=None):
         if path is None:
           name = line.split()[0]
         else:
-          name = name_files[0:-len(name_files.split('/')[-1])] + path + line.split()[0]
+          name = path + line.split()[0]
         struct = read_vertex(name)
         struct_ref_config.append(struct)      
 
@@ -423,7 +423,8 @@ def rotation_matrix(theta):
                            [p[2]*p[0]-s*p[1], p[2]*p[1]+s*p[0], p[2]**2+diag]])
 
 
-def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None, header=''):
+def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None,
+             blob_vector_constant=None, header=''):
   '''
   Save xyz file.
   '''
@@ -472,6 +473,11 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
 
         if global_vector is not None:
           np.savetxt(file_output, vg, newline=' ')
+
+        if blob_vector_constant is not None:
+          to_save = blob_vector_constant[j][k]
+          np.savetxt(file_output, to_save.reshape((1, to_save.size)), newline=' ')
+          
         file_output.write('\n')
                   
   return 
