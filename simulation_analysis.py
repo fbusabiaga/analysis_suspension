@@ -186,7 +186,7 @@ def read_vertex(name):
         i += 1
 
   coor = np.array(coor)
-  return coor
+  return coor[:,0:3]
 
 
 def read_vertex_file_list(name_files, path=None):
