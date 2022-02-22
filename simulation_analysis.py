@@ -446,7 +446,6 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
   # Loop over frames
   for i, xi in enumerate(x[0:M]):
     file_output.write(str(Nblobs) + '\n# ' + header + '\n')
-        
     if body_vector is not None:
       vr = body_vector[i]
       
@@ -479,6 +478,7 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
           np.savetxt(file_output, to_save.reshape((1, to_save.size)), newline=' ')
           
         file_output.write('\n')
+  file_output.flush()
                   
   return 
 
