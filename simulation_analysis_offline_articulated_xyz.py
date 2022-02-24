@@ -8,30 +8,29 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/hari/run1'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/hari/run1.bacteria_constant_torque.config']
-  list_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/hari/bacteria.list_vertex'
-  folder_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/hari/'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.3.0.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.3.0.0.bacteria_run42.3.0.0.config']
+  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.3.0.0.bacteria.list_vertex'
+  folder_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/bacteria/'
   structure = 'bacteria'
   num_frames = 1000
-  save_blobs = True
-  save_dipole = False
-  save_velocity = False
-  save_dat_index = [0,1]
+  save_blobs = False
+  save_tracking_points = True
 
   # Set blob radius by hand
   if False:
     blob_radii = None
   else:
-    blob_radii = [np.ones(162) * 0.131, np.ones(130) * 0.019]
+    # blob_radii = [np.ones(1) * 1.0, np.ones(1) * 0]
+    blob_radii = np.zeros((200, 1))
+    blob_radii[0::2,0] = 1.0    
     
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
   read = sa.read_input(name_input)
 
   # Read vertex  
-  # r_vectors = sa.read_vertex_file_list(list_vertex, path='../hari/')
-  r_vectors = sa.read_vertex_file_list(list_vertex, path=folder_vertex) 
+  r_vectors = sa.read_vertex_file_list(list_vertex, path=folder_vertex)
   print('r_vectors = ', len(r_vectors))
   for r in r_vectors:
     print('r_vectors = ', r.shape)
@@ -63,6 +62,11 @@ if __name__ == '__main__':
   # Save xyz for blobs
   if save_blobs:
     name = file_prefix + '.' + structure + '.xyz'
-    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii)
+    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True)
 
-
+  if save_tracking_points:
+    q = []
+    for i in range(len(r_vectors)):
+      q.append(np.zeros(3))
+    name = file_prefix + '.' + structure + '.tracking_points.xyz'
+    sa.save_xyz(x, q, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii)
