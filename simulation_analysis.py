@@ -424,7 +424,7 @@ def rotation_matrix(theta):
 
 
 def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None,
-             blob_vector_constant=None, header=''):
+             blob_vector_constant=None, periodic_length=np.zeros(3), header=''):
   '''
   Save xyz file.
   '''
@@ -457,6 +457,10 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
       R = rotation_matrix(theta)
       r = np.dot(r_vectors[j % Nrigid], R.T) + y[0:3]
       r = r.reshape((r.size // 3, 3))
+
+      # Project to PBC 
+      if np.any(periodic_length > 0):
+        r = project_to_periodic_image(r, periodic_length, shift=False)
 
       if body_frame_vector is not None:
         v = np.dot(body_frame_vector, R.T)
@@ -494,7 +498,7 @@ def save_dat(x, t, i, name, header=''):
   return
 
   
-def project_to_periodic_image(r, L):
+def project_to_periodic_image(r, L, shift=True):
     '''
     Project a vector r to the minimal image representation
     of size L=(Lx, Ly, Lz) and with a corner at (0,0,0). If 
@@ -507,7 +511,7 @@ def project_to_periodic_image(r, L):
       for i in range(3):
         if(L[i] > 0):
           r[:,i] = r[:,i] - (r[:,i] // L[i]) * L[i]
-        else:
+        elif shift:
           ri_min =  np.min(r[:,i])
           if ri_min < 0:
             r[:,i] -= ri_min

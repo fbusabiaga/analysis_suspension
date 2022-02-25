@@ -8,22 +8,33 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.3.0.0'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.3.0.0.bacteria_run42.3.0.0.config']
-  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.3.0.0.bacteria.list_vertex'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.10.0.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.10.0.0.bacteria_run42.10.0.0.config']
+  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.10.0.0.bacteria.list_vertex'
   folder_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/bacteria/'
   structure = 'bacteria'
   num_frames = 1000
-  save_blobs = False
-  save_tracking_points = True
+  save_blobs = True
+  save_tracking_points = False
 
   # Set blob radius by hand
   if False:
     blob_radii = None
+  elif False:
+    blob_radii = []
+    for i in range(200):
+      if i % 2 == 0:
+        blob_radii.append(np.ones(1))
+      else:
+        blob_radii.append(np.ones(1) * 0)    
   else:
-    # blob_radii = [np.ones(1) * 1.0, np.ones(1) * 0]
-    blob_radii = np.zeros((200, 1))
-    blob_radii[0::2,0] = 1.0    
+    blob_radii = []
+    for i in range(200):
+      if i % 2 == 0:
+        blob_radii.append(np.zeros(162))
+      else:
+        blob_radii.append(np.ones(38) * 0.131)
+        
     
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
@@ -43,11 +54,13 @@ if __name__ == '__main__':
   n_save = int(read.get('n_save'))
   dt_sample = dt * n_save
   eta = float(read.get('eta'))
-  print('file_prefix = ', file_prefix)
-  print('dt          = ', dt)
-  print('dt_sample   = ', dt_sample)
-  print('n_save      = ', n_save)
-  print('eta         = ', eta)
+  periodic_length = np.fromstring(read.get('periodic_length'), sep=' ')
+  print('file_prefix     = ', file_prefix)
+  print('dt              = ', dt)
+  print('dt_sample       = ', dt_sample)
+  print('n_save          = ', n_save)
+  print('eta             = ', eta)
+  print('periodic_length = ', periodic_length)
   print(' ')
 
   # Loop over config files
@@ -60,13 +73,15 @@ if __name__ == '__main__':
   print(' ')
 
   # Save xyz for blobs
-  if save_blobs:
+  if save_blobs:   
     name = file_prefix + '.' + structure + '.xyz'
-    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True)
+    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii,
+                periodic_length=periodic_length)
 
   if save_tracking_points:
     q = []
     for i in range(len(r_vectors)):
       q.append(np.zeros(3))
     name = file_prefix + '.' + structure + '.tracking_points.xyz'
-    sa.save_xyz(x, q, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii)
+    sa.save_xyz(x, q, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii,
+                periodic_length=periodic_length)
