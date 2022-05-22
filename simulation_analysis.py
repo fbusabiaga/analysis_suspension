@@ -14,7 +14,6 @@ except ImportError as e:
   njit=None
   print(e)
 
-
 # Static Variable decorator for calculating acceptance rate.
 def static_var(varname, value):
   def decorate(func):
@@ -756,7 +755,7 @@ def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
   cluster_i = np.ones(N // Nblobs_body, dtype=np.int32) * (N // Nblobs_body)
 
   # Loop over bodies
-  for j in prange(N):
+  for j in range(N):
     j_body = j // Nblobs_body
     min_body = np.minimum(j_body, cluster_i[j_body])
     neighbor = 0
@@ -769,7 +768,6 @@ def cluster_detection_numba(N, list_of_neighbors, offsets, Nblobs_body):
         continue
       neighbor = 1
       if l_body < min_body or cluster_i[l_body] < min_body:
-        min_body = l_body
         min_body = np.minimum(l_body, cluster_i[l_body])
         
     # Set lower body index
