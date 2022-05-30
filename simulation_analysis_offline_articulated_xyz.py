@@ -8,17 +8,18 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.10.0.0'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.10.0.0.bacteria_run42.10.0.0.config']
-  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run42/run42.10.0.0.bacteria.list_vertex'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run103/run103.2.0.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run103/run103.2.0.0.bacteria.config']
+  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run103/run103.2.0.0.bacteria_run103.1.0.0.list_vertex'
   folder_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/bacteria/'
   structure = 'bacteria'
   num_frames = 1000
   save_blobs = True
   save_tracking_points = False
+  frame_body = -1
 
   # Set blob radius by hand
-  if False:
+  if True:
     blob_radii = None
   elif False:
     blob_radii = []
@@ -29,11 +30,11 @@ if __name__ == '__main__':
         blob_radii.append(np.ones(1) * 0)    
   else:
     blob_radii = []
-    for i in range(200):
+    for i in range(2):
       if i % 2 == 0:
-        blob_radii.append(np.zeros(162))
+        blob_radii.append(np.ones(162) * 0.131)
       else:
-        blob_radii.append(np.ones(38) * 0.131)
+        blob_radii.append(np.ones(408) * 2.449489742783179935e-02)
         
     
   # Read inputfile
@@ -54,7 +55,7 @@ if __name__ == '__main__':
   n_save = int(read.get('n_save'))
   dt_sample = dt * n_save
   eta = float(read.get('eta'))
-  periodic_length = np.fromstring(read.get('periodic_length'), sep=' ')
+  periodic_length = np.fromstring(read.get('periodic_length'), sep=' ') if read.get('periodic_length') else np.zeros(3)
   print('file_prefix     = ', file_prefix)
   print('dt              = ', dt)
   print('dt_sample       = ', dt_sample)
@@ -76,7 +77,8 @@ if __name__ == '__main__':
   if save_blobs:   
     name = file_prefix + '.' + structure + '.xyz'
     sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii,
-                periodic_length=periodic_length)
+                periodic_length=periodic_length, frame_body=frame_body)
+
 
   if save_tracking_points:
     q = []

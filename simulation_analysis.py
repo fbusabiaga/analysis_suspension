@@ -423,7 +423,7 @@ def rotation_matrix(theta):
 
 
 def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None,
-             blob_vector_constant=None, periodic_length=np.zeros(3), header=''):
+             blob_vector_constant=None, periodic_length=np.zeros(3), frame_body=-1, header=''):
   '''
   Save xyz file.
   '''
@@ -453,7 +453,11 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
     
     for j, y in enumerate(xi):
       theta = y[3:8]
+      q = y[0:3]
       R = rotation_matrix(theta)
+      if frame_body > -1:
+        q -= xi[frame_body, 0:3]
+        R = np.dot(rotation_matrix(xi[frame_body, 3:8]).T, R)
       r = np.dot(r_vectors[j % Nrigid], R.T) + y[0:3]
       r = r.reshape((r.size // 3, 3))
 
