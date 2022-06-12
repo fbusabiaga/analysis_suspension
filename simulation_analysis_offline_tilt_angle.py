@@ -25,9 +25,9 @@ if __name__ == '__main__':
   files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0.superellipsoid_run3007.5.3.0.config',
                   '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.1.superellipsoid_run3007.5.3.1.config']
   structure = 'superellipsoid'
-  num_frames = 10
+  num_frames = 10000
   tilt_vtk = True
-  grid = np.array([-1000, 1000, 5, -1000, 1000, 5, -1000, 1000, 5])
+  grid = np.array([-40, 40, 20, -40, 40, 20, 0, 0, 1])
 
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
@@ -133,15 +133,15 @@ if __name__ == '__main__':
         omega_perp = np.dot(omega_vec_hat, np.cross(z, B))
 
         # Get cell index
-        ix = int((x[i,j,0] - grid[0,0] - r_cm[0]) / dx_grid[0])
-        iy = int((x[i,j,1] - grid[0,1] - r_cm[1]) / dx_grid[1])
-        iz = int((x[i,j,2] - grid[0,2] - r_cm[2]) / dx_grid[2])
+        ix = int((x[i,j,0] - grid[0,0] - r_cm[0]) / dx_grid[0]) if grid_points[0] > 1 else 0
+        iy = int((x[i,j,1] - grid[0,1] - r_cm[1]) / dx_grid[1]) if grid_points[1] > 1 else 0
+        iz = int((x[i,j,2] - grid[0,2] - r_cm[2]) / dx_grid[2]) if grid_points[2] > 1 else 0
         index = iz * grid_points[0] * grid_points[1] + iy * grid_points[0] + ix
-
+        
         # Save info
-        if (ix >= 0 and ix < grid_length[0] and
-            iy >= 0 and iy < grid_length[0] and
-            iz >= 0 and iz < grid_length[2]):
+        if (ix >= 0 and ix < grid_points[0] and
+            iy >= 0 and iy < grid_points[1] and
+            iz >= 0 and iz < grid_points[2]):
           grid_omega_count[index] += 1
           grid_omega_z[index] += omega_z
           grid_omega_B[index] += omega_B
@@ -154,31 +154,45 @@ if __name__ == '__main__':
       grid_omega_B[sel] /= grid_omega_count[sel]
       grid_omega_perp[sel] /= grid_omega_count[sel]
       grid_omega_norm[sel] /= grid_omega_count[sel]
+      sel = grid_omega_count == 0
+      grid_omega_count[sel] = 1e+20
+      grid_omega_z[sel] = 1e+20
+      grid_omega_B[sel] = 1e+20
+      grid_omega_perp[sel] = 1e+20
+      grid_omega_norm[sel] = 1e+20
+      
+      # Data for vtk
+      variables = [[grid_omega_count], [grid_omega_z], [grid_omega_B], [grid_omega_perp], [grid_omega_norm]]
+      varnames = [['omega_count\0'], ['omega_z\0'], ['omega_B\0'], ['omega_perp\0'], ['omega_norm\0']]
+      names = [file_prefix + '.step.' + str(i).zfill(8) + '.omega_count.vtk',
+               file_prefix + '.step.' + str(i).zfill(8) + '.omega_z.vtk',
+               file_prefix + '.step.' + str(i).zfill(8) + '.omega_B.vtk',
+               file_prefix + '.step.' + str(i).zfill(8) + '.omega_perp.vtk', 
+               file_prefix + '.step.' + str(i).zfill(8) + '.omega_norm.vtk']
+      
+      # Prepara data for VTK writer 
+      dims = np.array([grid_points[0]+1, grid_points[1]+1, grid_points[2]+1], dtype=np.int32) 
+      nvars = 1
+      vardims = np.array([1])
+      centering = np.array([0])
+      name = file_prefix + '.omega_field.vtk'
+      grid_x_vtk = grid_x - dx_grid[0] * 0.5
+      grid_y_vtk = grid_y - dx_grid[1] * 0.5
+      grid_z_vtk = grid_z - dx_grid[2] * 0.5
+      grid_x_vtk = np.concatenate([grid_x_vtk, [grid[1,0]]])
+      grid_y_vtk = np.concatenate([grid_y_vtk, [grid[1,1]]])
+      grid_z_vtk = np.concatenate([grid_z_vtk, [grid[1,2]]])
 
-    # Prepara data for VTK writer 
-    variables = [grid_omega_count]
-    dims = np.array([grid_points[0]+1, grid_points[1]+1, grid_points[2]+1], dtype=np.int32) 
-    nvars = 1
-    vardims = np.array([1])
-    centering = np.array([0])
-    varnames = ['omega_count\0']
-    name = file_prefix + '.omega_field.vtk'
-    grid_x = grid_x - dx_grid[0] * 0.5
-    grid_y = grid_y - dx_grid[1] * 0.5
-    grid_z = grid_z - dx_grid[2] * 0.5
-    grid_x = np.concatenate([grid_x, [grid[1,0]]])
-    grid_y = np.concatenate([grid_y, [grid[1,1]]])
-    grid_z = np.concatenate([grid_z, [grid[1,2]]])
-        
-    # Write velocity field
-    visit_writer.boost_write_rectilinear_mesh(name,      # File's name
-                                              0,         # 0=ASCII,  1=Binary
-                                              dims,      # {mx, my, mz}
-                                              grid_x,     # xmesh
-                                              grid_y,     # ymesh
-                                              grid_z,     # zmesh
-                                              nvars,     # Number of variables
-                                              vardims,   # Size of each variable, 1=scalar, velocity=3*scalars
-                                              centering, # Write to cell centers of corners
-                                              varnames,  # Variables' names
-                                              variables) # Variables
+      for k in range(len(variables)):
+        # Write velocity field
+        visit_writer.boost_write_rectilinear_mesh(names[k],     # File's name
+                                                  0,            # 0=ASCII,  1=Binary
+                                                  dims,         # {mx, my, mz}
+                                                  grid_x_vtk,   # xmesh
+                                                  grid_y_vtk,   # ymesh
+                                                  grid_z_vtk,   # zmesh
+                                                  nvars,        # Number of variables
+                                                  vardims,      # Size of each variable, 1=scalar, velocity=3*scalars
+                                                  centering,    # Write to cell centers of corners
+                                                  varnames[k],  # Variables' names
+                                                  variables[k]) # Variables
