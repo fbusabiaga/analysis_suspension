@@ -9,7 +9,15 @@ z \times B = perpendicular directions.
 import numpy as np
 import sys
 import simulation_analysis as sa
-from quaternion import Quaternion 
+from quaternion import Quaternion
+
+try:
+  sys.path.append('../RigidMultiblobsWall/')
+  from visit import visit_writer as visit_writer
+except ImportError as e:
+  print(e)
+  pass
+
 
 if __name__ == '__main__':
   # Set parameters
@@ -17,9 +25,9 @@ if __name__ == '__main__':
   files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0.superellipsoid_run3007.5.3.0.config',
                   '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.1.superellipsoid_run3007.5.3.1.config']
   structure = 'superellipsoid'
-  num_frames = 10000
-  tilt_vtk = False
-  grid = np.array([-100, 100, 10, -100, 100, 10, 0, 0, 1])
+  num_frames = 10
+  tilt_vtk = True
+  grid = np.array([-1000, 1000, 5, -1000, 1000, 5, -1000, 1000, 5])
 
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
@@ -35,7 +43,6 @@ if __name__ == '__main__':
   eta = float(read.get('eta'))
   omega = float(read.get('omega'))
   if 'quaternion_B' in read:
-    print('quaternion_B = ', read.get('quaternion_B'))
     quaternion_B = Quaternion(np.fromstring(read.get('quaternion_B'), sep=' ') / np.linalg.norm(np.fromstring(read.get('quaternion_B'), sep=' ')))
     R_B = quaternion_B.rotation_matrix()
   print('file_prefix = ', file_prefix)
@@ -103,17 +110,17 @@ if __name__ == '__main__':
  
     for i, vi in enumerate(velocity):
       # Create vector for omega orientation
-      grid_omega_z = np.zeros_like(grid_coor)
-      grid_omega_B = np.zeros_like(grid_coor)
-      grid_omega_perp = np.zeros_like(grid_coor)
-      grid_omega_norm = np.zeros_like(grid_coor) 
+      grid_omega_z = np.zeros(grid_coor.shape[0])
+      grid_omega_B = np.zeros_like(grid_omega_z)
+      grid_omega_perp = np.zeros_like(grid_omega_z)
+      grid_omega_norm = np.zeros_like(grid_omega_z)
+      grid_omega_count = np.zeros_like(grid_omega_z)
       B0_hat = np.array([np.cos(omega * t[i]), np.sin(omega * t[i]), 0])
       B = np.dot(R_B, B0_hat)
 
       # Compute center of mass
       xi = x[i]
       r_cm = np.mean(xi[:,0:3], axis=0)
-      print('r_cm = ', r_cm)
       
       for j, vij in enumerate(vi):
         # Get angular velocity direction
@@ -124,14 +131,54 @@ if __name__ == '__main__':
         omega_z = np.dot(omega_vec_hat, z)
         omega_B = np.dot(omega_vec_hat, B)
         omega_perp = np.dot(omega_vec_hat, np.cross(z, B))
-        omega_norm_avg = omega_norm
 
-        # # Get cell index
-        # xij = x[i,j]
-        # ix = xij[0] / 
+        # Get cell index
+        ix = int((x[i,j,0] - grid[0,0] - r_cm[0]) / dx_grid[0])
+        iy = int((x[i,j,1] - grid[0,1] - r_cm[1]) / dx_grid[1])
+        iz = int((x[i,j,2] - grid[0,2] - r_cm[2]) / dx_grid[2])
+        index = iz * grid_points[0] * grid_points[1] + iy * grid_points[0] + ix
 
-      # Save time value
-      omega_z /= vi.shape[0]
-      omega_B /= vi.shape[0]
-      omega_perp /= vi.shape[0]
-      omega_norm_avg /= vi.shape[0]
+        # Save info
+        if (ix >= 0 and ix < grid_length[0] and
+            iy >= 0 and iy < grid_length[0] and
+            iz >= 0 and iz < grid_length[2]):
+          grid_omega_count[index] += 1
+          grid_omega_z[index] += omega_z
+          grid_omega_B[index] += omega_B
+          grid_omega_perp[index] += omega_perp
+          grid_omega_norm[index] += omega_norm
+          
+      # Normalize saved variables
+      sel = grid_omega_count > 0
+      grid_omega_z[sel] /= grid_omega_count[sel]
+      grid_omega_B[sel] /= grid_omega_count[sel]
+      grid_omega_perp[sel] /= grid_omega_count[sel]
+      grid_omega_norm[sel] /= grid_omega_count[sel]
+
+    # Prepara data for VTK writer 
+    variables = [grid_omega_count]
+    dims = np.array([grid_points[0]+1, grid_points[1]+1, grid_points[2]+1], dtype=np.int32) 
+    nvars = 1
+    vardims = np.array([1])
+    centering = np.array([0])
+    varnames = ['omega_count\0']
+    name = file_prefix + '.omega_field.vtk'
+    grid_x = grid_x - dx_grid[0] * 0.5
+    grid_y = grid_y - dx_grid[1] * 0.5
+    grid_z = grid_z - dx_grid[2] * 0.5
+    grid_x = np.concatenate([grid_x, [grid[1,0]]])
+    grid_y = np.concatenate([grid_y, [grid[1,1]]])
+    grid_z = np.concatenate([grid_z, [grid[1,2]]])
+        
+    # Write velocity field
+    visit_writer.boost_write_rectilinear_mesh(name,      # File's name
+                                              0,         # 0=ASCII,  1=Binary
+                                              dims,      # {mx, my, mz}
+                                              grid_x,     # xmesh
+                                              grid_y,     # ymesh
+                                              grid_z,     # zmesh
+                                              nvars,     # Number of variables
+                                              vardims,   # Size of each variable, 1=scalar, velocity=3*scalars
+                                              centering, # Write to cell centers of corners
+                                              varnames,  # Variables' names
+                                              variables) # Variables
