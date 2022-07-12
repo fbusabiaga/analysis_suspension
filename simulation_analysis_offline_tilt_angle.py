@@ -21,12 +21,13 @@ except ImportError as e:
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0.superellipsoid_run3007.5.3.0.config',
-                  '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.1.superellipsoid_run3007.5.3.1.config']
-  structure = 'superellipsoid'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3011/run3011.0.0.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3011/run3011.0.0.0.blob.config']
+
+  structure = 'blob'
   num_frames = 10000
-  tilt_vtk = True
+  tilt_vtk = False
+  tilt_rotating_frame_vtk = False
   grid = np.array([-40, 40, 20, -40, 40, 20, 0, 0, 1])
 
   # Read inputfile
@@ -90,7 +91,7 @@ if __name__ == '__main__':
     f_handle.write(str(i * dt_sample) + ' ' +  str(omega_z) + ' ' +  str(omega_B) + ' ' +  str(omega_perp) + ' ' +  str(omega_norm_avg) + '\n')
 
   # Save tilt to vtk file
-  if tilt_vtk:
+  if tilt_vtk or tilt_rotating_frame_vtk:
     grid = np.reshape(grid, (3,3)).T
     grid_length = grid[1] - grid[0]
     grid_points = np.array(grid[2], dtype=np.int32)
@@ -115,6 +116,12 @@ if __name__ == '__main__':
       grid_omega_perp = np.zeros_like(grid_omega_z)
       grid_omega_norm = np.zeros_like(grid_omega_z)
       grid_omega_count = np.zeros_like(grid_omega_z)
+      grid_omega_z_rotated = np.zeros(grid_coor.shape[0])
+      grid_omega_B_rotated = np.zeros_like(grid_omega_z)
+      grid_omega_perp_rotated = np.zeros_like(grid_omega_z)
+      grid_omega_norm_rotated = np.zeros_like(grid_omega_z)
+      grid_omega_count_rotated = np.zeros_like(grid_omega_z)
+
       B0_hat = np.array([np.cos(omega * t[i]), np.sin(omega * t[i]), 0])
       B = np.dot(R_B, B0_hat)
 
@@ -147,6 +154,31 @@ if __name__ == '__main__':
           grid_omega_B[index] += omega_B
           grid_omega_perp[index] += omega_perp
           grid_omega_norm[index] += omega_norm
+
+        # Get cell index rotated
+        B_xy = np.array([B[0], B[1], 0]) / np.linalg.norm(B[0:2])
+        theta_B = -np.arctan2(B_xy[1], B_xy[0])
+        R_M = np.zeros((2,2))
+        R_M[0,0] = np.cos(theta_B)
+        R_M[0,1] = np.sin(theta_B)
+        R_M[1,0] = -np.sin(theta_B)
+        R_M[1,1] = np.cos(theta_B)
+        r_vec = x[i,j,0:3] - r_cm
+        r_vec[0:2] = np.dot(R_M, r_vec[0:2])
+        ix = int((r_vec[0] - grid[0,0]) / dx_grid[0]) if grid_points[0] > 1 else 0
+        iy = int((r_vec[1] - grid[0,1]) / dx_grid[1]) if grid_points[1] > 1 else 0
+        iz = int((r_vec[2] - grid[0,2]) / dx_grid[2]) if grid_points[2] > 1 else 0
+        index = iz * grid_points[0] * grid_points[1] + iy * grid_points[0] + ix
+        
+        # Save info
+        if (ix >= 0 and ix < grid_points[0] and
+            iy >= 0 and iy < grid_points[1] and
+            iz >= 0 and iz < grid_points[2]):
+          grid_omega_count_rotated[index] += 1
+          grid_omega_z_rotated[index] += omega_z
+          grid_omega_B_rotated[index] += omega_B
+          grid_omega_perp_rotated[index] += omega_perp
+          grid_omega_norm_rotated[index] += omega_norm
           
       # Normalize saved variables
       sel = grid_omega_count > 0
@@ -160,16 +192,44 @@ if __name__ == '__main__':
       grid_omega_B[sel] = 1e+20
       grid_omega_perp[sel] = 1e+20
       grid_omega_norm[sel] = 1e+20
+
+      # Normalize saved variables rotated
+      sel = grid_omega_count_rotated > 0
+      grid_omega_z_rotated[sel] /= grid_omega_count_rotated[sel]
+      grid_omega_B_rotated[sel] /= grid_omega_count_rotated[sel]
+      grid_omega_perp_rotated[sel] /= grid_omega_count_rotated[sel]
+      grid_omega_norm_rotated[sel] /= grid_omega_count_rotated[sel]
+      sel = grid_omega_count_rotated == 0
+      grid_omega_count_rotated[sel] = 1e+20
+      grid_omega_z_rotated[sel] = 1e+20
+      grid_omega_B_rotated[sel] = 1e+20
+      grid_omega_perp_rotated[sel] = 1e+20
+      grid_omega_norm_rotated[sel] = 1e+20
+
+
       
       # Data for vtk
-      variables = [[grid_omega_count], [grid_omega_z], [grid_omega_B], [grid_omega_perp], [grid_omega_norm]]
-      varnames = [['omega_count\0'], ['omega_z\0'], ['omega_B\0'], ['omega_perp\0'], ['omega_norm\0']]
-      names = [file_prefix + '.step.' + str(i).zfill(8) + '.omega_count.vtk',
-               file_prefix + '.step.' + str(i).zfill(8) + '.omega_z.vtk',
-               file_prefix + '.step.' + str(i).zfill(8) + '.omega_B.vtk',
-               file_prefix + '.step.' + str(i).zfill(8) + '.omega_perp.vtk', 
-               file_prefix + '.step.' + str(i).zfill(8) + '.omega_norm.vtk']
-      
+      variables = []
+      varnames = []
+      names = []
+      if tilt_vtk:
+        variables.extend([[grid_omega_count], [grid_omega_z], [grid_omega_B], [grid_omega_perp], [grid_omega_norm]])
+        varnames.extend([['omega_count\0'], ['omega_z\0'], ['omega_B\0'], ['omega_perp\0'], ['omega_norm\0']])
+        names.extend([file_prefix + '.step.' + str(i).zfill(8) + '.omega_count.vtk',
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_z.vtk',
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_B.vtk',
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_perp.vtk', 
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_norm.vtk'])
+
+      if tilt_rotating_frame_vtk:
+        variables.extend([[grid_omega_count_rotated], [grid_omega_z_rotated], [grid_omega_B_rotated], [grid_omega_perp_rotated], [grid_omega_norm_rotated]])
+        varnames.extend([['omega_count\0'], ['omega_z\0'], ['omega_B\0'], ['omega_perp\0'], ['omega_norm\0']])
+        names.extend([file_prefix + '.step.' + str(i).zfill(8) + '.omega_count_rotated.vtk',
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_z_rotated.vtk',
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_B_rotated.vtk',
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_perp_rotated.vtk', 
+                      file_prefix + '.step.' + str(i).zfill(8) + '.omega_norm_rotated.vtk'])
+              
       # Prepara data for VTK writer 
       dims = np.array([grid_points[0]+1, grid_points[1]+1, grid_points[2]+1], dtype=np.int32) 
       nvars = 1
