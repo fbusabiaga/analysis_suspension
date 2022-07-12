@@ -16,15 +16,16 @@ except ImportError as e:
 
 
 # Set variables
-prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0.step.'
-suffix = '.omega_z.vtk'
-num_steps = 500
-variable_name = 'omega_z'
+prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.1.0.0.step.'
+suffix = '.velocity_field.vtk'
+num_steps = 24
+variable_name = 'velocity'
 file_name = prefix + str(0).zfill(8) + suffix
-grid = np.array([-40, 40, 20, -40, 40, 20, 0, 0, 1])
-upper_bound = 1.0e+04
-lower_bound = -1.0e+04
+grid = np.array([-6, 6, 50, -6, 6, 50, -8, 16, 100, 0])
+upper_bound = 1.0e+24
+lower_bound = -1.0e+24
 out_of_bound_value = 1.0e+20
+variable_dimension = 3
 
 # Create variable for averaging
 mesh = meshio.read(file_name)
@@ -75,7 +76,8 @@ if True:
   variables = [np.reshape(x_avg, x_avg.size)] 
   dims = np.array([grid_points[0]+1, grid_points[1]+1, grid_points[2]+1], dtype=np.int32) 
   nvars = 1
-  vardims = np.array([ 1 if len(x.shape) == 1 else x.shape[1] ])
+  # vardims = np.array([ 1 if len(x.shape) == 1 else x.shape[1] ])
+  vardims = np.array([variable_dimension])
   centering = np.array([0])
   varnames = [variable_name + '\0']
   name = prefix + 'average' + suffix
