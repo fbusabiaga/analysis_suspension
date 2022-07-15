@@ -17,14 +17,15 @@ except ImportError as e:
 
 # Set variables
 file_name_1 = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.1.0.0.step.average.velocity_field.vtk'
-file_name_2 = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.5.0.0.step.average.velocity_field.vtk'
-output_name = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.1_5.0.0.step.average.velocity_field.vtk'
+file_name_2 = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.7.0.0.step.average.velocity_field.vtk'
+output_name = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.1_7_relative_norm.0.0.step.average.velocity_field.vtk'
 variable_name = 'velocity'
 grid = np.array([-6, 6, 50, -6, 6, 50, -8, 16, 100, 0])
 upper_bound = 1.0e+24
 lower_bound = -1.0e+24
 out_of_bound_value = 1.0e+20
 variable_dimension = 3
+type_difference = 'relative_norm' # Use 'absolute' or 'relative'
 
 # Read first file
 mesh = meshio.read(file_name_1)
@@ -41,8 +42,15 @@ vel = mesh.cell_data
 x_2 = vel[variable_name][0].flatten()
 
 # Compute difference
-x_diff = x_2 - x_1
-
+if type_difference == 'absolute':
+  x_diff = x_2 - x_1
+elif type_difference == 'relative':
+  x_diff = (x_2 - x_1) / x_1
+elif type_difference == 'relative_norm':
+  x_diff = (x_2 - x_1).reshape((x_1.size // 3, 3)) / np.linalg.norm(x_1.reshape((x_1.size // 3, 3)), axis=1)[:, None]
+else:
+  print('Error with type_difference = ', type_difference)
+  exit()  
 
 if True:
   # Prepare grid values
