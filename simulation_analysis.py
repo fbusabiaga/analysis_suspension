@@ -456,9 +456,9 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
       q = y[0:3]
       R = rotation_matrix(theta)
       if frame_body > -1:
-        q -= xi[frame_body, 0:3]
+        q = np.dot(rotation_matrix(xi[frame_body, 3:8]).T, (y[0:3] - xi[frame_body, 0:3]))
         R = np.dot(rotation_matrix(xi[frame_body, 3:8]).T, R)
-      r = np.dot(r_vectors[j % Nrigid], R.T) + y[0:3]
+      r = np.dot(r_vectors[j % Nrigid], R.T) + q
       r = r.reshape((r.size // 3, 3))
 
       # Project to PBC 
