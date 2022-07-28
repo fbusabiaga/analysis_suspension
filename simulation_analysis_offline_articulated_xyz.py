@@ -8,18 +8,19 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run103/run103.2.0.0'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run103/run103.2.0.0.bacteria.config']
-  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run103/run103.2.0.0.bacteria_run103.1.0.0.list_vertex'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.0.3.0'
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.0.3.0.bacteria.config']
+  list_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.0.3.0.bacteria_run104.0.0.0.list_vertex'
   folder_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/bacteria/'
-  structure = 'bacteria'
-  num_frames = 1000
+  structure = 'bacteria_frame_body'
+  num_frames = 10000
   save_blobs = True
   save_tracking_points = False
-  frame_body = -1
+  frame_body = 0
+  save_dat_index = [0]
 
   # Set blob radius by hand
-  if True:
+  if False:
     blob_radii = None
   elif False:
     blob_radii = []
@@ -79,7 +80,6 @@ if __name__ == '__main__':
     sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii,
                 periodic_length=periodic_length, frame_body=frame_body)
 
-
   if save_tracking_points:
     q = []
     for i in range(len(r_vectors)):
@@ -87,3 +87,9 @@ if __name__ == '__main__':
     name = file_prefix + '.' + structure + '.tracking_points.xyz'
     sa.save_xyz(x, q, name, num_frames=num_frames, letter=structure[0].upper(), articulated=True, blob_vector_constant=blob_radii,
                 periodic_length=periodic_length)
+
+  # Save dat file
+  if save_dat_index is not None:
+    for i in save_dat_index:
+      name = file_prefix + '.' + structure + '.' + str(i) + '.dat'
+      sa.save_dat(x, t, i, name)
