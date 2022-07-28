@@ -9,12 +9,15 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  index = '6.0.8'
-  index_next = '6.0.9'
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2121/run2121.' + index
-  file_config = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2121/run2121.' + index + '.star_run2121.' + index + '.config'
-  inputfile_name = '/workspace/scratch/users/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/rheology/data.main.2121.' + index_next
-  clones_name = '/workspace/scratch/users/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/rheology/Structures/star_run2121.' + index_next + '.clones'
+  index = '10.7.0'
+  index_next = '10.7.1'
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3013/run3013.' + index
+  file_config = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3013/run3013.' + index + '.blob_run3013.' + index + '.config'
+  inputfile_name = '/workspace/scratch/users/fbalboa/sfw/clones/RigidMultiblobsWall/Lubrication/Lubrication_Examples/chiral/data.main.3013.' + index_next
+  clones_name = '/workspace/scratch/users/fbalboa/sfw/clones/RigidMultiblobsWall/Lubrication/Lubrication_Examples/chiral/Structures/blob_run3013.' + index_next + '.clones'
+  clones_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3013/run3013.' + index_next + '.blob_run3013.' + index_next + '.'
+
+
 
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
@@ -43,6 +46,11 @@ if __name__ == '__main__':
     subprocess.call(['tail', '-' + str(N + 1), file_config], stdout=f_handle)
   subprocess.run(['mv', 'tmp.dat', clones_name])
   
-
+  # Save additional clones file
+  clones_name_v2 = clones_prefix + str(N).zfill(8) + '.clones'
+  with open('tmp.dat', 'w') as f_handle:
+    subprocess.call(['tail', '-' + str(N + 1), file_config], stdout=f_handle)
+  subprocess.run(['mv', 'tmp.dat', clones_name_v2])
+  print('clones_name_v2 = ', clones_name_v2)
 
 
