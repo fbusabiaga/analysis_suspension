@@ -9,14 +9,13 @@ import simulation_analysis as sa
 
 if __name__ == '__main__':
   # Set parameters
-  index = '10.7.0'
-  index_next = '10.7.1'
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3013/run3013.' + index
-  file_config = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3013/run3013.' + index + '.blob_run3013.' + index + '.config'
-  inputfile_name = '/workspace/scratch/users/fbalboa/sfw/clones/RigidMultiblobsWall/Lubrication/Lubrication_Examples/chiral/data.main.3013.' + index_next
-  clones_name = '/workspace/scratch/users/fbalboa/sfw/clones/RigidMultiblobsWall/Lubrication/Lubrication_Examples/chiral/Structures/blob_run3013.' + index_next + '.clones'
-  clones_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3013/run3013.' + index_next + '.blob_run3013.' + index_next + '.'
-
+  index = '8.7.0'
+  index_next = '8.7.1'
+  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.' + index
+  file_config = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.' + index + '.superellipsoid_run3007.' + index + '.config'
+  inputfile_name = '/workspace/scratch/users/fbalboa/sfw/clones/RigidMultiblobsWall/multi_bodies/examples/chiral/data.main.3007.' + index_next
+  clones_name = '/workspace/scratch/users/fbalboa/sfw/clones/RigidMultiblobsWall/multi_bodies/examples/chiral/Structures/superellipsoid_run3007.' + index_next + '.clones'
+  clones_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.' + index_next + '.superellipsoid_run3007.' + index_next + '.'
 
 
   # Read inputfile
@@ -47,7 +46,7 @@ if __name__ == '__main__':
   subprocess.run(['mv', 'tmp.dat', clones_name])
   
   # Save additional clones file
-  clones_name_v2 = clones_prefix + str(N).zfill(8) + '.clones'
+  clones_name_v2 = clones_prefix + str((x.shape[0] - 1) * int(read.get('n_save'))).zfill(8) + '.clones'
   with open('tmp.dat', 'w') as f_handle:
     subprocess.call(['tail', '-' + str(N + 1), file_config], stdout=f_handle)
   subprocess.run(['mv', 'tmp.dat', clones_name_v2])
