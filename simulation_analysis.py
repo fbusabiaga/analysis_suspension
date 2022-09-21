@@ -846,3 +846,83 @@ def cluster_detection(x, num_frames, rcut=1.0, r_vectors=None, L=np.ones(3), nam
     clusters[i] = cluster_i
   
   return clusters
+
+
+def map2d(x, y, variable, nx=10, ny=10, x_ends=None, y_ends=None, centered=False, n_avg=1, vmin=None, vmax=None, file_prefix=None):
+  '''
+  Compute color map of variable with (x,y) positions.
+  '''
+  # Compute limits for 2d plot
+  if x_ends is None:
+    x_ends = np.array([np.min(x), np.max(x)])
+  if y_ends is None:
+    y_ends = np.array([np.min(y), np.max(y)])
+
+  # Mesh width
+  dx = (x_ends[1] - x_ends[0]) / nx
+  dy = (y_ends[1] - y_ends[0]) / ny
+    
+  # Create grid
+  grid = np.zeros((n_avg, nx, ny))
+  grid_count = np.zeros((n_avg, nx, ny))
+
+  # Loop over frames
+  for i, xi in enumerate(x):
+    print('i = ', i)
+    if centered:
+      x_cm = np.mean(xi)
+      y_cm = np.mean(y[i])
+      xi -= x_cm 
+      yi = y[i] - y_cm
+    else:
+      x_cm = 0
+      y_cm = 0
+      yi = y[i]
+
+    # Shift frame values
+    for j in range(n_avg - 1):
+      grid[j,:,:] = grid[j+1,:,:]
+      grid_count[j,:,:] = grid_count[j+1,:,:]
+    grid[-1,:,:] = 0
+    grid_count[-1,:,:] = 0
+
+    # Loop over colloids
+    for j in range(xi.size):
+      rx = xi[j]
+      ry = yi[j]
+    
+      # Position on grid
+      nxj = nx - 1 - int((rx - x_ends[0]) / dx)
+      nyj = ny - 1 - int((ry - y_ends[0]) / dy)
+
+      # Save to 2d map
+      if nxj >=0 and nxj < nx and nyj >= 0 and nyj < ny:
+        grid[-1,nxj,nyj] += variable[i,j]
+        grid_count[-1,nxj,nyj] += 1
+        
+    # Print png
+    if file_prefix is not None:
+      # Average grid over n_avg
+      grid_sum = np.sum(grid, axis=0)
+      grid_count_sum = np.sum(grid_count, axis=0)
+      sel = grid_count_sum > 0
+      grid_sum[sel] = grid_sum[sel] / grid_count_sum[sel]
+
+      # Save to mesh
+      alpha = np.zeros_like(grid_sum)
+      alpha[sel] = 1
+      x_center = np.linspace(x_ends[1] - dx / 2, x_ends[0] + dx / 2, num=nx)
+      y_center = np.linspace(y_ends[1] - dy / 2, y_ends[0] + dy / 2, num=ny)
+      mesh_x, mesh_y = np.meshgrid(x_center, y_center)
+      
+      # Plot
+      name = file_prefix + '.step.' + str(i).zfill(8) + '.png'
+      plt.clf()
+      plot = plt.pcolormesh(mesh_y, mesh_x, grid_sum, cmap='viridis', alpha=alpha, vmin=vmin, vmax=vmax)
+      plt.colorbar(plot)
+      plt.xlabel('x ($\mu$m)')
+      plt.ylabel('y ($\mu$m)')
+      plt.savefig(name)
+
+
+      
