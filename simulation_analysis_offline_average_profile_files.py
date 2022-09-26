@@ -25,16 +25,15 @@ if True:
 
 
 if __name__ == '__main__':
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2133/run2133.6.rerun_0.'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2130/run2130.1.rerun_0.'
   suffix = '.velocity_profile.step.*.dat'
   simulation_number_start = 0
-  simulation_number_end = 1
+  simulation_number_end = 13
   N_skip_fraction = 4
   N_intervales = 3
-  num_columns = 4
   shift_linear_fit = 10
   set_axis = 0
-  gamma_dot_0 = 1e+04
+  gamma_dot_0 = 1e+00
   eta_0 = 1e-03
   wall_Lz = 4.5
 
@@ -45,8 +44,7 @@ if __name__ == '__main__':
   fig, axes = plt.subplots(1, 1, figsize=(5,5))
   
   # Prepare colors for a few curves
-  C = mpl.cm.Greys(np.linspace(0, 1, N_intervales + 1))
-
+  C = np.flip(mpl.cm.Greys(np.linspace(0, 1, N_intervales + 1)), axis=0)
 
   # Get files
   files = []
@@ -99,7 +97,7 @@ if __name__ == '__main__':
       try:
         if shift_linear_fit > 0:
           axes.plot(x_avg[:,0], x_avg[:,set_axis+1], '-', color=C[i])
-          popt, pcov = scop.curve_fit(linear_profile, x_avg[shift_linear_fit:-shift_linear_fit,0], x_avg[shift_linear_fit:-shift_linear_fit,set_axis+1], p0=[-3800, 1700])          
+          popt, pcov = scop.curve_fit(linear_profile, x_avg[shift_linear_fit:-shift_linear_fit,0], x_avg[shift_linear_fit:-shift_linear_fit,set_axis+1], p0=[-3800, 1700], bounds=(np.array([-np.inf, 0]), np.array([np.inf, np.inf])))  
         else:
           popt, pcov = scop.curve_fit(linear_profile, x_avg[:,0], x_avg[:,set_axis+1], p0=[0.1, 1])
       except:
@@ -124,6 +122,8 @@ if __name__ == '__main__':
     print('eta_avg = ', eta_avg / eta_0, ' +/- ', eta_std / eta_0)
     print('eta_avg = ', eta_avg, eta_std)
     print(' ')
+    print('shear   = ', slope_avg, slope_std)
+    print(' ')
     print('v0      = ', np.mean(v0) + np.mean(slope) * wall_Lz / 2, ' +/- ', np.std(v0, ddof=1) + np.std(slope) * wall_Lz / 2 / np.std(slope)**2)
     print(' ')
     
@@ -144,6 +144,6 @@ if __name__ == '__main__':
   
     # Save to pdf and png
     plt.savefig('plot_velocity_profiles.py.pdf', format='pdf') 
-    name = file_prefix + 'plot_velocity_profiles.py.pdf'
+    name = file_prefix + 'base.plot_velocity_profiles.py.pdf'
     plt.savefig(name, format='pdf') 
     
