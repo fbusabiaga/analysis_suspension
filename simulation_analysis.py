@@ -297,7 +297,7 @@ def compute_histogram_from_frames(sample, value=None, column_sample=0, column_va
   return h
 
 
-def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, scale='linear', max_points_bin=10, max_levels=10, header='', name=None):
+def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1, scale='linear', max_points_bin=10, max_levels=10, min_width=1, header='', name=None):
   '''
   Compute histogram averages.  
   '''
@@ -306,7 +306,9 @@ def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1
     sample = sample.reshape(sample.size, 1)  
 
   if scale == 'adaptive':
-    num_intervales = np.array([xmin, xmax])
+    # Set preliminary edges with enough points within bin
+    if not isinstance(num_intervales, np.ndarray):
+      num_intervales = xmin + np.arange(num_intervales + 1) * (xmax - xmin) / num_intervales
     counter = 0
     while True:
       hf, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=False)
@@ -317,6 +319,18 @@ def compute_histogram(sample, column_sample=0, num_intervales=10, xmin=0, xmax=1
       h_new_edges = (h_edges[sel] + h_edges[np.where(sel==True)[0]+1]) / 2
       num_intervales = np.insert(num_intervales, np.where(sel==True)[0]+1, h_new_edges)
       counter += 1
+
+    # If edges are too close remove some
+    position = 0
+    while True:
+      if position < num_intervales.size - 2:
+        if num_intervales[position+1] - num_intervales[position] < min_width:
+          num_intervales = np.delete(num_intervales, position+1)
+        else:
+          position += 1
+      else:
+        break
+    num_intervales = np.unique(np.around(num_intervales, decimals=2))
 
   # Created histogram
   h, h_edges = np.histogram(sample[:, column_sample], num_intervales, range=(xmin, xmax), density=True)
