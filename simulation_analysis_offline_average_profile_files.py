@@ -25,15 +25,15 @@ if True:
 
 
 if __name__ == '__main__':
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2130/run2130.1.rerun_0.'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2132/run2132.4.rerun_1.'
   suffix = '.velocity_profile.step.*.dat'
   simulation_number_start = 0
-  simulation_number_end = 13
+  simulation_number_end = 25
   N_skip_fraction = 4
   N_intervales = 3
   shift_linear_fit = 10
   set_axis = 0
-  gamma_dot_0 = 1e+00
+  gamma_dot_0 = 1e+03
   eta_0 = 1e-03
   wall_Lz = 4.5
 
@@ -49,13 +49,12 @@ if __name__ == '__main__':
   # Get files
   files = []
   for i in range(simulation_number_start, simulation_number_end + 1):
-    name = file_prefix + str(i) + suffix
+    name = file_prefix + str(i) + suffix   
     files_i = [filename for filename in glob.glob(name)]
     files_i.sort()
     files_i = files_i[0:-1]
     files.extend(files_i)
-
-
+    
   # Read files
   N_skip = len(files) // N_skip_fraction
   x = []
@@ -74,7 +73,6 @@ if __name__ == '__main__':
   result[:,0:x_avg.shape[1]] = x_avg
   result[:,x_avg.shape[1]:] = x_ste
   np.savetxt(output_name, result)
-  
 
   if True:
     def linear_profile(y, offset, slope):
@@ -115,8 +113,13 @@ if __name__ == '__main__':
 
 
     # Average viscosity
-    eta_avg = np.mean(eta)
-    eta_std = np.std(eta, ddof=1) / np.sqrt(N_intervales) + np.mean(eta_error)
+    if False:
+      # Weighted average
+      eta_avg = np.sum(eta**2 / eta_error) / np.sum(eta / eta_error)
+      eta_std = np.std(eta, ddof=1) / np.sqrt(N_intervales) + np.sum(eta)  / np.sum(eta / eta_error)
+    else:
+      eta_avg = np.mean(eta)
+      eta_std = np.std(eta, ddof=1) / np.sqrt(N_intervales) + np.mean(eta_error)
     slope_avg = np.mean(slope)
     slope_std = np.std(slope, ddof=1) + np.mean(slope_error)
     print('eta_avg = ', eta_avg / eta_0, ' +/- ', eta_std / eta_0)
