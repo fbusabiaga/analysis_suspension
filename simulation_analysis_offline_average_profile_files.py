@@ -25,15 +25,15 @@ if True:
 
 
 if __name__ == '__main__':
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2132/run2132.4.rerun_1.'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.2.rerun_1.'
   suffix = '.velocity_profile.step.*.dat'
   simulation_number_start = 0
   simulation_number_end = 25
   N_skip_fraction = 4
   N_intervales = 3
-  shift_linear_fit = 10
+  shift_linear_fit = 5
   set_axis = 0
-  gamma_dot_0 = 1e+03
+  gamma_dot_0 = 1e+01
   eta_0 = 1e-03
   wall_Lz = 4.5
 
@@ -111,6 +111,10 @@ if __name__ == '__main__':
       slope_error[i] = np.sqrt(pcov[1,1])
       print('i       = ', i, ', eta = ', eta[i] / eta_0, ' +/- ', eta_error[i] / eta_0)
 
+    print(' ')
+    for i in range(N_intervales):
+      print('i       = ', i, ', sh  = ', slope[i], ' +/- ', slope_error[i])
+    print(' ')
 
     # Average viscosity
     if False:
@@ -132,7 +136,7 @@ if __name__ == '__main__':
     
     # Plot average
     v0 = np.mean(v0)
-    axes.plot(x[0,:,0], linear_profile(x[0,:,0], v0, eta_0 * gamma_dot_0 / eta_avg), '--', color='r')
+    axes.plot(x[0,shift_linear_fit:-shift_linear_fit,0], linear_profile(x[0,shift_linear_fit:-shift_linear_fit,0], v0, eta_0 * gamma_dot_0 / eta_avg), '--', color='r')
 
     # Set axes
     axes.set_xlabel(r'$z$ ($\mu$m)', fontsize=fontsize)
