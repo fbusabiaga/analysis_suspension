@@ -4,15 +4,26 @@ import scipy.optimize as scop
 import scipy.spatial as scsp
 import sys
 import time
+
 try:
   import matplotlib.pyplot as plt
 except ImportError as e:
   print(e)
+
 try:
   from numba import njit, prange
 except ImportError as e:
   njit=None
   print(e)
+
+# Try to import the visit_writer (boost implementation)
+try:
+  import visit_writer as visit_writer
+except ImportError as e:
+  print(e)
+  pass
+
+  
 
 # Static Variable decorator for calculating acceptance rate.
 def static_var(varname, value):
@@ -482,7 +493,8 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
       if body_frame_vector is not None:
         v = np.dot(body_frame_vector, R.T)
         
-      for k, ri in enumerate(r):     
+      for k, ri in enumerate(r):
+        letter = str(j)
         file_output.write(letter + ' %s %s %s ' % (ri[0], ri[1], ri[2]))
 
         if body_frame_vector is not None:
@@ -655,6 +667,183 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
       header='Columns: r, gr density, gr count number'
       np.savetxt(name, gr, header=header)
 
+  return gr
+
+
+@njit(parallel=False, fastmath=True)
+def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbins, dbin, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls):
+  '''
+  This function compute the pair distribution function g(x,y,z) for one snapshot.
+  '''
+  N = r_vectors.size // 3
+  r_vectors = r_vectors.reshape((N, 3))
+  gr = np.zeros((nbins, nbins, nbins))
+
+  # Copy arrays
+  rx_vec = np.copy(r_vectors[:,0])
+  ry_vec = np.copy(r_vectors[:,1])
+  rz_vec = np.copy(r_vectors[:,2])
+  Lx = L[0]
+  Ly = L[1]
+  Lz = L[2]
+
+  # Set offset distance from walls
+  if offset_walls:
+    LxW = Lx_wall + np.array([rcut, -rcut])
+    LyW = Ly_wall + np.array([rcut, -rcut])
+    LzW = Lz_wall + np.array([rcut, -rcut])
+  else:
+    LxW = Lx_wall 
+    LyW = Ly_wall 
+    LzW = Lz_wall
+
+  for i in prange(N):
+    i_body = i // Nblobs_body
+
+    # Skipt if close to a wall
+    if rx_vec[i] < LxW[0] or rx_vec[i] > LxW[1] or ry_vec[i] < LyW[0] or ry_vec[i] > LyW[1] or rz_vec[i] < LzW[0] or rz_vec[i] > LzW[1]:
+      continue
+    
+    for k in range(offsets[i+1] - offsets[i]):
+      j = list_of_neighbors[offsets[i] + k]
+      j_body = j // Nblobs_body
+      if j == i:
+        continue
+      rx = rx_vec[j] - rx_vec[i]
+      ry = ry_vec[j] - ry_vec[i]
+      rz = rz_vec[j] - rz_vec[i]
+
+      # Use distance with PBC
+      if Lx > 0:
+        rx = rx - int(rx / Lx + 0.5 * (int(rx>0) - int(rx<0))) * Lx
+      if Ly > 0:
+        ry = ry - int(ry / Ly + 0.5 * (int(ry>0) - int(ry<0))) * Ly
+      if Lz > 0:
+        rz = rz - int(rz / Lz + 0.5 * (int(rz>0) - int(rz<0))) * Lz
+        
+      # Compute bins
+      xbin = int((rx + rcut) / dbin) if rx > -rcut else -1
+      ybin = int((ry + rcut) / dbin) if ry > -rcut else -1
+      zbin = int((rz + rcut) / dbin) if rz > -rcut else -1
+
+      # Update gr
+      if (xbin >= 0) and (xbin < nbins) and (ybin >= 0) and (ybin < nbins) and (zbin >= 0) and (zbin < nbins):
+        # Beware x is the fast axis in visit
+        gr[zbin, ybin, xbin] += 1.0
+  return gr
+
+
+def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=None, L=np.ones(3), offset_walls=False, dim='3d', name=None,
+                               Lx_wall=np.array([-np.inf, np.inf]), Ly_wall=np.array([-np.inf, np.inf]), Lz_wall=np.array([-np.inf, np.inf])):
+  '''
+  Compute pair distribution function, g(x,y,z), between bodies or blobs.
+  It assumes all bodies are the same.
+
+  Some inputs:
+  r_vectors = if None use body positions otherwise use blobs.
+  L = periodic dimensions. Use 0 if the system is infinite or have walls along one axis.
+  offset_walls = if True do not use particles near than rcut from walls.
+  Lx_wall = position of the walls along x axis. Use +/- np.inf if there are not walls.
+  dim=3d or 2d. 
+  '''
+  # Prepare variables
+  M = x.shape[0] if x.shape[0] < num_frames else num_frames
+  if r_vectors is not None:
+    Nblobs_body = r_vectors.size // 3
+    N = x.shape[1] * Nblobs_body
+  else:
+    Nblobs_body = 1
+    N = x.shape[1]
+    
+  # Note that the bins should go from negative r to positive r so the factor 2 in dbin
+  dbin = 2 * rcut / nbins
+  if dim == '3d':
+    gr = np.zeros((nbins, nbins, nbins))
+    rcut_tree = rcut * np.sqrt(3.0)
+  elif dim == '2d':
+    gr = np.zeros((nbins, nbins))
+    rcut_tree = rcut * np.sqrt(2.0)
+  else:
+    print('Wrong dimensions, dim = ', dim,' is not valid')
+    return None
+
+  # Loop over frames
+  for i, xi in enumerate(x[0:M]):
+    if r_vectors is None:
+      z = xi[:,0:3]
+    else:
+      z = np.zeros((N, 3))
+      for j, y in enumerate(xi):
+        theta = y[3:8]
+        R = rotation_matrix(theta)
+        r = np.dot(r_vectors, R.T) + y[0:3]
+        r = r.reshape((r.size // 3, 3))
+        z[Nblobs_body * j: Nblobs_body * (j+1)] = r
+    
+    # Project to PBC
+    z = project_to_periodic_image(np.copy(z), L)
+
+    # Set box dimensions for PBC
+    if L[0] > 0 or L[1] > 0 or L[2] > 0:
+      boxsize = np.zeros(3)
+      for j in range(3):
+        if L[j] > 0:
+          boxsize[j] = L[j]
+        else:
+          boxsize[j] = (np.max(z[:,j]) - np.min(z[:,j])) + rcut * 10
+    else:
+      boxsize = None   
+
+    # Build tree 
+    tree = scsp.cKDTree(z, boxsize=boxsize)
+    pairs = tree.query_ball_tree(tree, rcut_tree)
+    offsets = np.zeros(len(pairs)+1, dtype=int)
+    for j in range(len(pairs)):
+      offsets[j+1] = offsets[j] + len(pairs[j])
+    list_of_neighbors = np.concatenate(pairs).ravel()
+
+    gri = pair_distribution_numba(z, L, list_of_neighbors, offsets, rcut, nbins, dbin, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls=offset_walls)
+    gr += gri
+    
+  # Normalize gr xxx
+  if dim == '3d':
+    Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
+    Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
+    Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
+    factor = M * N * (N-1) * dbin**3 / (Lx * Ly * Lz)
+    gr = gr / factor
+  else:
+    Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
+    Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
+    factor = M * N * (N-1) * dbin**2 / (Lx * Ly)
+    gr = gr[:,1] / factor
+
+  # Save gr
+  if name is not None:
+    # Prepara data for VTK writer 
+    variables = [np.reshape(gr, gr.size)] 
+    dims = np.array([nbins+1, nbins+1, nbins+1], dtype=np.int32) 
+    nvars = 1
+    vardims = np.array([1])
+    centering = np.array([0])
+    varnames = ['pair_distribution\0']
+    grid_x = np.arange(nbins + 1) * dbin - (nbins * 0.5) * dbin
+    grid_y = np.arange(nbins + 1) * dbin - (nbins * 0.5) * dbin
+    grid_z = np.arange(nbins + 1) * dbin - (nbins * 0.5) * dbin
+
+    # Write velocity field
+    visit_writer.boost_write_rectilinear_mesh(name,      # File's name
+                                              0,         # 0=ASCII,  1=Binary
+                                              dims,      # {mx, my, mz}
+                                              grid_x,     # xmesh
+                                              grid_y,     # ymesh
+                                              grid_z,     # zmesh
+                                              nvars,     # Number of variables
+                                              vardims,   # Size of each variable, 1=scalar, velocity=3*scalars
+                                              centering, # Write to cell centers of corners
+                                              varnames,  # Variables' names
+                                              variables) # Variables
+    
   return gr
 
 
