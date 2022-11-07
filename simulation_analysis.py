@@ -805,7 +805,7 @@ def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=Non
     gri = pair_distribution_numba(z, L, list_of_neighbors, offsets, rcut, nbins, dbin, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls=offset_walls)
     gr += gri
     
-  # Normalize gr xxx
+  # Normalize gr 
   if dim == '3d':
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
