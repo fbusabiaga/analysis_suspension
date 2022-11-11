@@ -7,22 +7,32 @@ import simulation_analysis as sa
 
 
 if __name__ == '__main__':
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2130/run2130.0.0.'
-  suffix = '.star_run2130.0.0.' 
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2133/run2133.1.0.'
+  suffix = '.star_run2133.1.0.'
+  suffix_output = 'base.pair_distribution_blobs.vtk'
+  name_vertex = None
+  skiprows_vertex = 10
   simulation_number_start = 0
-  simulation_number_end = 0
+  simulation_number_end = 1
   N_skip_fraction = 4
   rcut = 1
-  nbins = 20 
+  nbins = 100
+  Lz_wall = np.array([0, 4.5])
 
   # Set output name
-  output_name = file_prefix + 'base.pair_distribution.vtk'
+  output_name = file_prefix + suffix_output
   print('output_name = ', output_name)
 
   # Read inputfile
   name_input = file_prefix + '0.inputfile' 
   read = sa.read_input(name_input)
 
+  # Read vertex file
+  if name_vertex:
+    r_vectors = np.loadtxt(name_vertex, skiprows=skiprows_vertex)
+  else:
+    r_vectors = None
+    
   # Set some parameters
   L = np.fromstring(read.get('periodic_length') or '0 0 0', sep=' ')
   print('L   = ', L)
@@ -44,6 +54,6 @@ if __name__ == '__main__':
   print('N_skip     = ', N_skip)
   
  
-  _ = sa.pair_distribution_function(x[N_skip:], num_frames - N_skip, rcut=rcut, nbins=nbins, r_vectors=None, L=L, Lz_wall=np.array([0, 4.5]),
+  _ = sa.pair_distribution_function(x[N_skip:], num_frames - N_skip, rcut=rcut, nbins=nbins, r_vectors=r_vectors, L=L, Lz_wall=Lz_wall,
                                     offset_walls=True, dim='3d', name=output_name)
   
