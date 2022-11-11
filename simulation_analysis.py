@@ -707,7 +707,7 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbin
     for k in range(offsets[i+1] - offsets[i]):
       j = list_of_neighbors[offsets[i] + k]
       j_body = j // Nblobs_body
-      if j == i:
+      if (i == j) or (i_body == j_body):
         continue
       rx = rx_vec[j] - rx_vec[i]
       ry = ry_vec[j] - ry_vec[i]
