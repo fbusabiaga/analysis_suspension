@@ -8,17 +8,31 @@ from quaternion import Quaternion
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0'
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.0.superellipsoid_run3007.5.3.0.config',
-                  '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3007/run3007.5.3.1.superellipsoid_run3007.5.3.1.config']
-  structure = 'superellipsoid'
-  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/chiral/Structures/superellipsoid_Lg_1.368_r_3.9_N_26.vertex'
-  num_frames = 1000
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.0'
+  files_method = 'sequence' # 'sequence'
+  file_start = 0
+  file_end = 25
+  file_prefix_config = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.'
+  file_suffix_config = '.star_run2131.3.0.' 
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.0.star_run2131.3.0.0.config']
+  structure = 'star'
+  # name_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/superellipsoid_Lg_1.368_r_3.9_N_26.vertex'
+  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/rheology/Structures/star_hook_N_25_a_0.05.vertex'
+  num_frames = 200100
+  n_save_xyz = 50
   save_blobs = True
-  save_dipole = True
+  save_dipole = False
   save_velocity = False
   save_dat_index = []
+  subset = 50
 
+  # Get names config files
+  if files_method == 'sequence':
+    files_config = []
+    for i in range(file_start, file_end + 1):
+      name = file_prefix_config + str(i) + file_suffix_config + str(i) + '.config'
+      files_config.append(name)
+  
   # Read inputfile
   name_input = file_prefix + '.inputfile' 
   read = sa.read_input(name_input)
@@ -32,7 +46,7 @@ if __name__ == '__main__':
   # Set some parameters
   dt = float(read.get('dt')) 
   n_save = int(read.get('n_save'))
-  dt_sample = dt * n_save
+  dt_sample = dt * n_save * n_save_xyz
   eta = float(read.get('eta'))
   if 'quaternion_B' in read:
     print('quaternion_B = ', read.get('quaternion_B'))
@@ -47,6 +61,7 @@ if __name__ == '__main__':
 
   # Loop over config files
   x = sa.read_config_list(files_config, print_name=True)
+  x = x[0::n_save_xyz]
 
   # Concatenate config files
   t = np.arange(x.shape[0]) * dt_sample
@@ -57,7 +72,11 @@ if __name__ == '__main__':
   # Save xyz for blobs
   if save_blobs:
     name = file_prefix + '.' + structure + '.xyz'
-    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper())
+    num_blobs = r_vectors.shape[0] * x.shape[1]
+    blob_vector_constant = np.zeros((x.shape[1], r_vectors.shape[0]))
+    for i in range(x.shape[1]):
+      blob_vector_constant[i,:] = x[0,i,0]
+    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), blob_vector_constant=blob_vector_constant)
        
   # Save velocity as xyz file
   if save_velocity:

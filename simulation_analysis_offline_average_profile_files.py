@@ -56,7 +56,7 @@ if __name__ == '__main__':
     files.extend(files_i)
     
   # Read files
-  N_skip = len(files) // N_skip_fraction
+  N_skip = int(len(files) // N_skip_fraction)
   x = []
   for i in range(N_skip, len(files)):
     name = files[i]

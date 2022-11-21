@@ -16,16 +16,17 @@ except ImportError as e:
 
 
 # Set variables
-prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.1.0.0.step.'
+prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/chiral/data/run3000/run3021/run3021.12.7.0.step.'
 suffix = '.velocity_field.vtk'
-num_steps = 24
+num_steps = 500
 variable_name = 'velocity'
 file_name = prefix + str(0).zfill(8) + suffix
-grid = np.array([-6, 6, 50, -6, 6, 50, -8, 16, 100, 0])
+grid = np.array([-12.5, 12.5, 100,  -12.5, 12.5, 100,  0, 8, 32])
 upper_bound = 1.0e+24
 lower_bound = -1.0e+24
 out_of_bound_value = 1.0e+20
 variable_dimension = 3
+step_size = 10
 
 # Create variable for averaging
 mesh = meshio.read(file_name)
@@ -39,7 +40,7 @@ sel = np.logical_and(x > lower_bound, x < upper_bound)
 x_count[sel] += 1
 
 # Loop over files
-for i in range(1,num_steps):
+for i in range(0,num_steps,step_size):
   name = prefix + str(i).zfill(8)  + suffix
   print(name)
   mesh = meshio.read(name)
