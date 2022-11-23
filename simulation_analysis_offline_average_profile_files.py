@@ -25,7 +25,7 @@ if True:
 
 
 if __name__ == '__main__':
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.2.rerun_1.'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2133/run2133.3.rerun_1.'
   suffix = '.velocity_profile.step.*.dat'
   simulation_number_start = 0
   simulation_number_end = 25
@@ -33,7 +33,7 @@ if __name__ == '__main__':
   N_intervales = 3
   shift_linear_fit = 5
   set_axis = 0
-  gamma_dot_0 = 1e+01
+  gamma_dot_0 = 1e+02
   eta_0 = 1e-03
   wall_Lz = 4.5
 
@@ -131,7 +131,7 @@ if __name__ == '__main__':
     print(' ')
     print('shear   = ', slope_avg, slope_std)
     print(' ')
-    print('v0      = ', np.mean(v0) + np.mean(slope) * wall_Lz / 2, ' +/- ', np.std(v0, ddof=1) + np.std(slope) * wall_Lz / 2 / np.std(slope)**2)
+    print('v0      = ', np.mean(v0) + np.mean(slope) * wall_Lz / 2, ' +/- ', np.std(v0, ddof=1) + slope_std * wall_Lz / 2)
     print(' ')
     
     # Plot average
