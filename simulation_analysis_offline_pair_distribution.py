@@ -7,17 +7,18 @@ import simulation_analysis as sa
 
 
 if __name__ == '__main__':
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2133/run2133.1.0.'
-  suffix = '.star_run2133.1.0.'
-  suffix_output = 'base.pair_distribution_blobs.vtk'
-  name_vertex = None
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2123/run2123.5.0.'
+  suffix = '.star_run2123.5.0.'
+  name_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/star_hook_N_33_a_0.05.vertex'
+  # name_vertex = None
   skiprows_vertex = 10
   simulation_number_start = 0
-  simulation_number_end = 1
-  N_skip_fraction = 4
-  rcut = 1
-  nbins = 100
+  simulation_number_end = 25
+  N_skip_fraction = 1.1
+  rcut = 0.3
+  nbins = 80
   Lz_wall = np.array([0, 4.5])
+  suffix_output = 'base.pair_distribution_blobs.nbins.' + str(nbins) + '.vtk'
 
   # Set output name
   output_name = file_prefix + suffix_output
@@ -49,7 +50,7 @@ if __name__ == '__main__':
 
   # Get number of frames and skip frames
   num_frames = x.shape[0]
-  N_skip = num_frames // N_skip_fraction
+  N_skip = int(num_frames // N_skip_fraction)
   print('num_frames = ', num_frames)
   print('N_skip     = ', N_skip)
   

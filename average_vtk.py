@@ -16,18 +16,21 @@ except ImportError as e:
 
 
 # Set variables
-prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/run0/run104/run104.1.0.0.step.'
+prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/articulated/data/gokberk/fixed_2022_11_26/run_onCube_atStep.'
 suffix = '.velocity_field.vtk'
-num_steps = 24
 variable_name = 'velocity'
-file_name = prefix + str(0).zfill(8) + suffix
-grid = np.array([-6, 6, 50, -6, 6, 50, -8, 16, 100, 0])
+grid = np.array([-12, 12, 100,  -12, 12, 100,  -12, 12, 100])
 upper_bound = 1.0e+24
 lower_bound = -1.0e+24
 out_of_bound_value = 1.0e+20
 variable_dimension = 3
+start = 900
+num_steps = 50400
+step_size = 900
+file_name = prefix + str(start).zfill(8) + suffix
 
 # Create variable for averaging
+print(file_name)
 mesh = meshio.read(file_name)
 points = mesh.points
 cells = mesh.cells
@@ -39,10 +42,10 @@ sel = np.logical_and(x > lower_bound, x < upper_bound)
 x_count[sel] += 1
 
 # Loop over files
-for i in range(1,num_steps):
-  name = prefix + str(i).zfill(8)  + suffix
-  print(name)
-  mesh = meshio.read(name)
+for i in range(start+step_size, num_steps+step_size, step_size):
+  file_name = prefix + str(i).zfill(8)  + suffix
+  print(file_name)
+  mesh = meshio.read(file_name)
   xi = mesh.cell_data[variable_name][0].flatten()
   sel = np.logical_and(xi > lower_bound, xi < upper_bound)
   x_count[sel] += 1

@@ -494,7 +494,6 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
         v = np.dot(body_frame_vector, R.T)
         
       for k, ri in enumerate(r):
-        letter = str(j)
         file_output.write(letter + ' %s %s %s ' % (ri[0], ri[1], ri[2]))
 
         if body_frame_vector is not None:
