@@ -224,6 +224,45 @@ def read_vertex_file_list(name_files, path=None):
 
   return struct_ref_config
 
+
+def read_stress(name):
+  '''
+  Read stress and store in an array of shape (num_frames, num_bodies, 9).
+  '''
+
+  # Read number of lines and bodies
+  N = 0
+  try:
+    with open(name, 'r') as f_handle:
+      num_lines = 0
+      N = 0
+      for line in f_handle:
+        if num_lines == 0:
+          N = int(line)
+        num_lines += 1
+  except OSError:
+    return np.array([])
+
+  # Set array
+  num_frames = num_lines // (N + 1) 
+  x = np.zeros((num_frames, N, 9))
+
+  # Read config
+  with open(name, 'r') as f_handle:
+    for k, line in enumerate(f_handle):
+      if (k % (N+1)) == 0:
+        continue
+      else:
+        data = np.fromstring(line, sep=' ')
+        frame = k // (N+1)      
+        i = k - 1 - (k // (N+1)) * (N+1)
+        if frame >= num_frames:
+          break
+        x[frame, i] = np.copy(data)
+
+  # Return config
+  return x
+
     
 def compute_velocities(x, dt=1, frame_rate=1):
   '''
