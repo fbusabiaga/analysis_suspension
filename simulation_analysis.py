@@ -903,6 +903,96 @@ def correlation(g,h):
   return np.fft.ifft(g_fft * h_fft_conj)[0:g.size] / np.arange(len(g), 0, -1) 
 
 
+def msd_rotational(x, dt, MSD_steps=None, output_name=None, header=''):
+  '''
+  Compute the rotational MSD from the trajectory
+  '''
+  # Init variables
+  num_bodies = x.shape[1]
+  ex = np.array([1.0, 0, 0])
+  ey = np.array([0, 1.0, 0])
+  ez = np.array([0, 0, 1.0])
+
+  # Allocate MSD memory
+  if MSD_steps is None:
+    MSD_steps = x.shape[0]
+  else:
+    MSD_steps = x.shape[0] if x.shape[0] < MSD_steps else MSD_steps
+  MSD = np.zeros((MSD_steps, 3, 3))
+  MSD_average = np.zeros((MSD_steps, 3, 3))
+  MSD_std = np.zeros((MSD_steps, 3, 3))
+
+  # Compute correlations
+  for body in range(num_bodies):
+    # Allocate memory
+    delta_u = np.zeros((x.shape[0], 3))
+    
+    # 1. Get rotation matrix at time zero
+    theta = x[0,body,3:8]
+    R = rotation_matrix(theta)
+
+    # 2. Get body axes at time zero
+    ux0 = np.dot(R, ex)
+    uy0 = np.dot(R, ey)
+    uz0 = np.dot(R, ez)
+    
+    for ti in range(x.shape[0]):
+      # 1. Get rotation matrix
+      theta = x[ti,body,3:8]
+      R = rotation_matrix(theta)
+
+      # 2. Get body axes
+      ux = np.dot(R, ex)
+      uy = np.dot(R, ey)
+      uz = np.dot(R, ez)
+
+      # 3. Compute delta_u
+      delta_u[ti] = 0.5 * (np.cross(ux0, ux) + np.cross(uy0, uy) + np.cross(uz0, uz))
+      
+    # Compute sums 
+    sum_xx = np.cumsum(delta_u[:,0], delta_u[:,0])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_xy = np.cumsum(delta_u[:,0], delta_u[:,1])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_xz = np.cumsum(delta_u[:,0], delta_u[:,2])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_yx = np.cumsum(delta_u[:,0], delta_u[:,0])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_yy = np.cumsum(delta_u[:,0], delta_u[:,1])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_yz = np.cumsum(delta_u[:,0], delta_u[:,2])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_zx = np.cumsum(delta_u[:,0], delta_u[:,0])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_zy = np.cumsum(delta_u[:,0], delta_u[:,1])[::-1] / np.arrange(x.shape[0], 0, -1)
+    sum_zz = np.cumsum(delta_u[:,0], delta_u[:,2])[::-1] / np.arrange(x.shape[0], 0, -1)
+    
+    # Compute MSD
+    MSD[:,0,0] = sum_xx[:MSD_steps] 
+    MSD[:,0,1] = sum_xy[:MSD_steps] 
+    MSD[:,0,2] = sum_xz[:MSD_steps] 
+    MSD[:,1,0] = sum_yx[:MSD_steps] 
+    MSD[:,1,1] = sum_yy[:MSD_steps] 
+    MSD[:,1,2] = sum_yz[:MSD_steps] 
+    MSD[:,2,0] = sum_zx[:MSD_steps] 
+    MSD[:,2,1] = sum_zy[:MSD_steps] 
+    MSD[:,2,2] = sum_zz[:MSD_steps]
+
+    # Compute average MSD
+    MSD_average += (MSD - MSD_average) / (body + 1)
+    MSD_std += body * (MSD - MSD_average)**2 / (body + 1)
+
+  # Normalize std 
+  MSD_std = np.sqrt(MSD_std / np.maximum(1, num_bodies - 1))
+
+  # Save to file
+  if output_name is not None:
+    if len(header) == 0:
+      header = 'Columns: linear MSD (9 terms), MSD std (9 terms)'
+      MSD_average = MSD_average.reshape(MSD.size // 9, 9)
+      MSD_std = MSD_std.reshape(MSD.size // 9, 9)
+      result = np.zeros((MSD_steps, 19))
+      result[:,0] = np.arange(MSD_steps) * dt
+      result[:,1:10] = MSD_average[0:MSD_steps]
+      result[:,10:19] = MSD_std[0:MSD_steps]      
+      np.savetxt(output_name, result, header=header)
+  
+  return MSD_average, MSD_std
+  
+
 def msd(x, dt, MSD_steps=None, output_name=None, header=''):
   '''
   Compute the translational MSD from the trajectory using FFT.
