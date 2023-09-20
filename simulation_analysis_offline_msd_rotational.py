@@ -1,14 +1,26 @@
 import numpy as np
 import sys
 import simulation_analysis as sa
+import time
 
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2120/run2120.0.0.0'
-  files_config = ['/workspace/scratch/users/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2120/run2120.0.0.0.star_run2120.0.0.0.config'] 
-  num_frames = 200
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2161/run2161.0.0.0'
+  files_method = 'sequence' # 'sequence'
+  file_start = 0
+  file_end = 25
+  file_prefix_config = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2161/run2161.0.0.'
+  file_suffix_config = '.star_run2161.0.0.' 
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2161/run2161.0.0.17.star_run2161.0.0.17.config']
+  suffix = '.star_run2161.*.dat'  
+  simulation_number_start = 0
+  simulation_number_end = 40
+  num_frames = 1000
   num_frames_skip_fraction = 0
+
+  # Start time counter
+  time_start = time.time()
   
   # Read input file
   name_input = file_prefix + '.inputfile'
@@ -17,6 +29,13 @@ if __name__ == '__main__':
   dt = float(read.get('dt')) 
   n_save = int(read.get('n_save'))
   dt_sample = dt * n_save
+
+  # Get names config files
+  if files_method == 'sequence':
+    files_config = []
+    for i in range(file_start, file_end + 1):
+      name = file_prefix_config + str(i) + file_suffix_config + str(i) + '.config'
+      files_config.append(name)
   
   # Get number of particles
   N = sa.read_particle_number(files_config[0])
@@ -48,5 +67,5 @@ if __name__ == '__main__':
   name = file_prefix + '.msd_rotational.dat'
   sa.msd_rotational(x, dt_sample, MSD_steps=num_frames, output_name=name)
 
-
+  print('time = ', time.time() - time_start)
   
