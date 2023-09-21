@@ -903,6 +903,62 @@ def correlation(g,h):
   return np.fft.ifft(g_fft * h_fft_conj)[0:g.size] / np.arange(len(g), 0, -1) 
 
 
+def rotational_correlation(x, dt, axis0, Corr_steps=None, output_name=None, header=''):
+  '''
+  Compute the rotational MSD from the trajectory
+  '''
+  # Init variables
+  num_bodies = x.shape[1]
+
+  # Allocate MSD memory
+  if Corr_steps is None:
+    Corr_steps = x.shape[0]
+  else:
+    Corr_steps = x.shape[0] if x.shape[0] < Corr_steps else Corr_steps
+  Corr_average = np.zeros((Corr_steps))
+  Corr_std = np.zeros((Corr_steps))
+
+  # Compute correlations
+  for body in range(num_bodies):
+    # Allocate memory
+    Corr = np.zeros((Corr_steps))
+    axis = np.zeros((x.shape[0], 3))
+
+    # Loop over time to compute body vectors in the laboratory frame of ref.
+    for ti in range(x.shape[0]):
+      # 1. Get rotation matrix
+      theta = x[ti,body,3:8]
+      R = rotation_matrix(theta)
+
+      # 2. Get body axes
+      axis[ti] = np.dot(R, axis0)
+
+    # Compute correlation
+    corr_x = np.real(correlation(axis[:,0], axis[:,0]))
+    corr_y = np.real(correlation(axis[:,1], axis[:,1]))
+    corr_z = np.real(correlation(axis[:,2], axis[:,2]))
+    Corr = corr_x + corr_y + corr_z
+          
+    # Compute average Corr
+    Corr_average += (Corr[0:Corr_steps] - Corr_average) / (body + 1)
+    Corr_std += body * (Corr[0:Corr_steps] - Corr_average)**2 / (body + 1)
+
+  # Normalize std 
+  Corr_std = np.sqrt(Corr_std / np.maximum(1, num_bodies - 1))
+
+  # Save to file
+  if output_name is not None:
+    if len(header) == 0:
+      header = 'Columns: linear Corr (1 terms), Corr std (1 terms)'
+      result = np.zeros((Corr_steps, 3))
+      result[:,0] = np.arange(Corr_steps) * dt
+      result[:,1] = Corr_average[0:Corr_steps]
+      result[:,2] = Corr_std[0:Corr_steps]      
+      np.savetxt(output_name, result, header=header)
+  
+  return Corr_average, Corr_std
+
+
 def msd_rotational(x, dt, MSD_steps=None, output_name=None, header=''):
   '''
   Compute the rotational MSD from the trajectory
@@ -927,10 +983,6 @@ def msd_rotational(x, dt, MSD_steps=None, output_name=None, header=''):
     MSD = np.zeros((MSD_steps, 3, 3))
     delta_u = np.zeros((x.shape[0], 3))
     
-    # 1. Get rotation matrix at time zero
-    theta = x[0,body,3:8]
-    R = rotation_matrix(theta)
-
     # 2. Get body axes at time zero
     u1 = np.zeros((x.shape[0], 3))
     u2 = np.zeros((x.shape[0], 3))
