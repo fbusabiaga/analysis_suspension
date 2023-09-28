@@ -64,8 +64,8 @@ if __name__ == '__main__':
   print(' ')
 
   # Call msd
-  name = file_prefix + '.rotational_correlation.dat'
-  sa.rotational_correlation(x, dt_sample, np.array([1, 0, 0]), Corr_steps=num_frames, output_name=name)
+  name = file_prefix + '.rotational_correlation.3.dat'
+  sa.rotational_correlation(x, dt_sample, Corr_steps=num_frames, output_name=name)
 
   print('time = ', time.time() - time_start)
   

@@ -8,23 +8,21 @@ from quaternion import Quaternion
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.0'
-  files_method = 'sequence' # 'sequence'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/FreeSlip/data/run0/run1/run1.0.0.0'
+  files_method = 'File' # 'sequence'
   file_start = 0
-  file_end = 25
+  file_end = 0
   file_prefix_config = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.'
   file_suffix_config = '.star_run2131.3.0.' 
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.0.star_run2131.3.0.0.config']
-  structure = 'star'
-  # name_vertex = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/superellipsoid_Lg_1.368_r_3.9_N_26.vertex'
-  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/examples/rheology/Structures/star_hook_N_25_a_0.05.vertex'
-  num_frames = 200100
-  n_save_xyz = 50
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/FreeSlip/data/run0/run1/run1.0.0.0.shell.config']
+  structure = 'shell'
+  name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/Structures/shell_N_42_Rg_0_8913_Rh_1.vertex'
+  num_frames = 10000
+  n_save_xyz = 1
   save_blobs = True
-  save_dipole = False
+  save_dipole = True
   save_velocity = False
   save_dat_index = []
-  subset = 50
 
   # Get names config files
   if files_method == 'sequence':

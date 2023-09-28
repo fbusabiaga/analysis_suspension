@@ -111,9 +111,9 @@ def read_config(name):
   except OSError:
     return np.array([])
 
-  # Set array
+  # Set array 
   num_frames = num_lines // (N + 1) 
-  x = np.zeros((num_frames, N, 7))
+  x = np.zeros((num_frames, N, 7)) 
 
   # Read config
   with open(name, 'r') as f_handle:
@@ -903,12 +903,15 @@ def correlation(g,h):
   return np.fft.ifft(g_fft * h_fft_conj)[0:g.size] / np.arange(len(g), 0, -1) 
 
 
-def rotational_correlation(x, dt, axis0, Corr_steps=None, output_name=None, header=''):
+def rotational_correlation(x, dt, axis0=None, Corr_steps=None, output_name=None, header=''):
   '''
   Compute the rotational MSD from the trajectory
   '''
   # Init variables
   num_bodies = x.shape[1]
+  ex = np.array([1, 0, 0])
+  ey = np.array([0, 1, 0])
+  ez = np.array([0, 0, 1])
 
   # Allocate MSD memory
   if Corr_steps is None:
@@ -919,10 +922,13 @@ def rotational_correlation(x, dt, axis0, Corr_steps=None, output_name=None, head
   Corr_std = np.zeros((Corr_steps))
 
   # Compute correlations
+  counter = 0
   for body in range(num_bodies):
     # Allocate memory
     Corr = np.zeros((Corr_steps))
-    axis = np.zeros((x.shape[0], 3))
+    axis1 = np.zeros((x.shape[0], 3))
+    axis2 = np.zeros((x.shape[0], 3))
+    axis3 = np.zeros((x.shape[0], 3))
 
     # Loop over time to compute body vectors in the laboratory frame of ref.
     for ti in range(x.shape[0]):
@@ -931,21 +937,38 @@ def rotational_correlation(x, dt, axis0, Corr_steps=None, output_name=None, head
       R = rotation_matrix(theta)
 
       # 2. Get body axes
-      axis[ti] = np.dot(R, axis0)
+      axis1[ti] = np.dot(R, ex) if axis0 is None else np.dot(R, axis0)
+      axis2[ti] = np.dot(R, ey)
+      axis3[ti] = np.dot(R, ez)
 
     # Compute correlation
-    corr_x = np.real(correlation(axis[:,0], axis[:,0]))
-    corr_y = np.real(correlation(axis[:,1], axis[:,1]))
-    corr_z = np.real(correlation(axis[:,2], axis[:,2]))
-    Corr = corr_x + corr_y + corr_z
+    if axis0 is not None:
+      corr1_x = np.real(correlation(axis1[:,0], axis1[:,0]))
+      corr1_y = np.real(correlation(axis1[:,1], axis1[:,1]))
+      corr1_z = np.real(correlation(axis1[:,2], axis1[:,2]))
+      Corr = corr1_x + corr1_y + corr1_z
+    else:
+      corr1_x = np.real(correlation(axis1[:,0], axis1[:,0]))
+      corr1_y = np.real(correlation(axis1[:,1], axis1[:,1]))
+      corr1_z = np.real(correlation(axis1[:,2], axis1[:,2]))
+      corr2_x = np.real(correlation(axis2[:,0], axis2[:,0]))
+      corr2_y = np.real(correlation(axis2[:,1], axis2[:,1]))
+      corr2_z = np.real(correlation(axis2[:,2], axis2[:,2]))
+      corr3_x = np.real(correlation(axis3[:,0], axis3[:,0]))
+      corr3_y = np.real(correlation(axis3[:,1], axis3[:,1]))
+      corr3_z = np.real(correlation(axis3[:,2], axis3[:,2]))   
+      Corr = (corr1_x + corr1_y + corr1_z + corr2_x + corr2_y + corr2_z + corr3_x + corr3_y + corr3_z) / 3
           
     # Compute average Corr
-    Corr_average += (Corr[0:Corr_steps] - Corr_average) / (body + 1)
-    Corr_std += body * (Corr[0:Corr_steps] - Corr_average)**2 / (body + 1)
+    if np.min(Corr) < 0.5:
+      Corr_average += (Corr[0:Corr_steps] - Corr_average) / (counter + 1)
+      Corr_std += counter * (Corr[0:Corr_steps] - Corr_average)**2 / (counter + 1)
+      counter += 1
 
   # Normalize std 
-  Corr_std = np.sqrt(Corr_std / np.maximum(1, num_bodies - 1))
-
+  Corr_std = np.sqrt(Corr_std / np.maximum(1, counter - 1))
+  print('counter = ', counter)
+  
   # Save to file
   if output_name is not None:
     if len(header) == 0:
