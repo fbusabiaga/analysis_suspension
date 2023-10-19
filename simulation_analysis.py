@@ -982,7 +982,7 @@ def rotational_correlation(x, dt, axis0=None, Corr_steps=None, output_name=None,
   return Corr_average, Corr_std
 
 
-def msd_rotational(x, dt, MSD_steps=None, output_name=None, header=''):
+def msd_rotational(x, dt, MSD_steps=None, step_size=1, output_name=None, header=''):
   '''
   Compute the rotational MSD from the trajectory
   '''
@@ -997,13 +997,13 @@ def msd_rotational(x, dt, MSD_steps=None, output_name=None, header=''):
     MSD_steps = x.shape[0]
   else:
     MSD_steps = x.shape[0] if x.shape[0] < MSD_steps else MSD_steps
-  MSD_average = np.zeros((MSD_steps, 3, 3))
-  MSD_std = np.zeros((MSD_steps, 3, 3))
+  MSD_average = np.zeros((MSD_steps // step_size, 3, 3))
+  MSD_std = np.zeros((MSD_steps // step_size, 3, 3))
 
   # Compute correlations
   for body in range(num_bodies):
     # Allocate memory
-    MSD = np.zeros((MSD_steps, 3, 3))
+    MSD = np.zeros((MSD_steps // step_size, 3, 3))
     delta_u = np.zeros((x.shape[0], 3))
     
     # 2. Get body axes at time zero
@@ -1023,31 +1023,32 @@ def msd_rotational(x, dt, MSD_steps=None, output_name=None, header=''):
       u3[ti] = np.dot(R, ez)
 
     # Double loop to build MSD for one body
-    for tau in range(MSD_steps):
+    taus = np.arange(MSD_steps // step_size) * step_size
+    for tau in taus:
       for ti in range(x.shape[0] - tau):
         # Compute rotational displacment (see Kraft et al. 2013)
         u_hat = 0.5 * (np.cross(u1[ti], u1[ti + tau]) + np.cross(u2[ti], u2[ti + tau]) + np.cross(u3[ti], u3[ti + tau]))
-
+        
         # Compute 6x6 MSD matrix
-        MSD[tau] += (np.outer(u_hat, u_hat) - MSD[tau]) / (ti + 1)
+        MSD[tau // step_size] += (np.outer(u_hat, u_hat) - MSD[tau // step_size]) / (ti + 1)
 
     # Compute average MSD
     MSD_average += (MSD - MSD_average) / (body + 1)
     MSD_std += body * (MSD - MSD_average)**2 / (body + 1)
-
+   
   # Normalize std 
-  MSD_std = np.sqrt(MSD_std / np.maximum(1, num_bodies - 1))
+  MSD_std = np.sqrt(MSD_std / np.maximum(1, body - 1))
 
   # Save to file
   if output_name is not None:
     if len(header) == 0:
-      header = 'Columns: linear MSD (9 terms), MSD std (9 terms)'
+      header = 'Columns: time, linear MSD (9 terms), MSD std (9 terms)'
       MSD_average = MSD_average.reshape(MSD.size // 9, 9)
       MSD_std = MSD_std.reshape(MSD.size // 9, 9)
-      result = np.zeros((MSD_steps, 19))
-      result[:,0] = np.arange(MSD_steps) * dt
-      result[:,1:10] = MSD_average[0:MSD_steps]
-      result[:,10:19] = MSD_std[0:MSD_steps]      
+      result = np.zeros((MSD_steps // step_size, 19))
+      result[:,0] = np.arange(MSD_steps // step_size) * step_size * dt 
+      result[:,1:10] = MSD_average
+      result[:,10:19] = MSD_std
       np.savetxt(output_name, result, header=header)
   
   return MSD_average, MSD_std
