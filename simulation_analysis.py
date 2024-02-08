@@ -709,13 +709,13 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
 
 
 @njit(parallel=False, fastmath=True)
-def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbins, dbin, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls):
+def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbinsx, nbinsy, nbinsz, dbinx, dbiny, dbinz, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls):
   '''
   This function compute the pair distribution function g(x,y,z) for one snapshot.
   '''
   N = r_vectors.size // 3
   r_vectors = r_vectors.reshape((N, 3))
-  gr = np.zeros((nbins, nbins, nbins))
+  gr = np.zeros((nbinsx, nbinsy, nbinsz))
 
   # Copy arrays
   rx_vec = np.copy(r_vectors[:,0])
@@ -760,19 +760,31 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbin
         rz = rz - int(rz / Lz + 0.5 * (int(rz>0) - int(rz<0))) * Lz
         
       # Compute bins
-      xbin = int((rx + rcut) / dbin) if rx > -rcut else -1
-      ybin = int((ry + rcut) / dbin) if ry > -rcut else -1
-      zbin = int((rz + rcut) / dbin) if rz > -rcut else -1
+      xbin = int((rx + rcut) / dbinx) if rx > -rcut else -1
+      ybin = int((ry + rcut) / dbiny) if ry > -rcut else -1
+      zbin = int((rz + rcut) / dbinz) if rz > -rcut else -1
 
       # Update gr
-      if (xbin >= 0) and (xbin < nbins) and (ybin >= 0) and (ybin < nbins) and (zbin >= 0) and (zbin < nbins):
+      if (xbin >= 0) and (xbin < nbinsx) and (ybin >= 0) and (ybin < nbinsy) and (zbin >= 0) and (zbin < nbinsz):
         # Beware x is the fast axis in visit
         gr[zbin, ybin, xbin] += 1.0
   return gr
 
 
-def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=None, L=np.ones(3), offset_walls=False, dim='3d', name=None,
-                               Lx_wall=np.array([-np.inf, np.inf]), Ly_wall=np.array([-np.inf, np.inf]), Lz_wall=np.array([-np.inf, np.inf])):
+def pair_distribution_function(x,
+                               num_frames,
+                               rcut=1.0,
+                               nbinsx=10,
+                               nbinsy=10,
+                               nbinsz=10,                               
+                               r_vectors=None,
+                               L=np.ones(3),
+                               offset_walls=False,
+                               dim='3d',
+                               name=None,
+                               Lx_wall=np.array([-np.inf, np.inf]),
+                               Ly_wall=np.array([-np.inf, np.inf]),
+                               Lz_wall=np.array([-np.inf, np.inf])):
   '''
   Compute pair distribution function, g(x,y,z), between bodies or blobs.
   It assumes all bodies are the same.
@@ -794,9 +806,11 @@ def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=Non
     N = x.shape[1]
     
   # Note that the bins should go from negative r to positive r so the factor 2 in dbin
-  dbin = 2 * rcut / nbins
   if dim == '3d':
-    gr = np.zeros((nbins, nbins, nbins))
+    gr = np.zeros((nbinsx, nbinsy, nbinsz))
+    dbinx = 2 * rcut / nbinsx
+    dbiny = 2 * rcut / nbinsy
+    dbinz = 2 * rcut / nbinsz  
     rcut_tree = rcut * np.sqrt(3.0)
   elif dim == '2d':
     gr = np.zeros((nbins, nbins))
@@ -840,7 +854,23 @@ def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=Non
       offsets[j+1] = offsets[j] + len(pairs[j])
     list_of_neighbors = np.concatenate(pairs).ravel()
 
-    gri = pair_distribution_numba(z, L, list_of_neighbors, offsets, rcut, nbins, dbin, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls=offset_walls)
+    gri = pair_distribution_numba(z,
+                                  L,
+                                  list_of_neighbors,
+                                  offsets,
+                                  rcut,
+                                  nbinsx,
+                                  nbinsy,
+                                  nbinsz,
+                                  dbinx,
+                                  dbiny,
+                                  dbinz,
+                                  dim,
+                                  Nblobs_body,
+                                  Lx_wall,
+                                  Ly_wall,
+                                  Lz_wall,
+                                  offset_walls=offset_walls)
     gr += gri
     
   # Normalize gr 
@@ -848,7 +878,7 @@ def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=Non
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
-    factor = M * N * (N-1) * dbin**3 / (Lx * Ly * Lz)
+    factor = M * N * (N-1) * dbinx * dbiny * dbinz / (Lx * Ly * Lz)
     gr = gr / factor
   else:
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
@@ -860,14 +890,14 @@ def pair_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=Non
   if name is not None:
     # Prepara data for VTK writer 
     variables = [np.reshape(gr, gr.size)] 
-    dims = np.array([nbins+1, nbins+1, nbins+1], dtype=np.int32) 
+    dims = np.array([nbinsx+1, nbinsy+1, nbinsz+1], dtype=np.int32) 
     nvars = 1
     vardims = np.array([1])
     centering = np.array([0])
     varnames = ['pair_distribution\0']
-    grid_x = np.arange(nbins + 1) * dbin - (nbins * 0.5) * dbin
-    grid_y = np.arange(nbins + 1) * dbin - (nbins * 0.5) * dbin
-    grid_z = np.arange(nbins + 1) * dbin - (nbins * 0.5) * dbin
+    grid_x = np.arange(nbinsx + 1) * dbinx - (nbinsx * 0.5) * dbinx
+    grid_y = np.arange(nbinsy + 1) * dbiny - (nbinsy * 0.5) * dbiny
+    grid_z = np.arange(nbinsz + 1) * dbinz - (nbinsz * 0.5) * dbinz
 
     # Write velocity field
     visit_writer.boost_write_rectilinear_mesh(name,      # File's name
