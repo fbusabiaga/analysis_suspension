@@ -8,14 +8,14 @@ from quaternion import Quaternion
 
 if __name__ == '__main__':
   # Set parameters
-  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/FreeSlip/data/run0/run1/run1.0.0.0'
+  file_prefix = '/home/fbalboa/simulations/RigidMultiblobsWall/FreeSlip/data/run0/run6/run6.5.0.0'
   files_method = 'File' # 'sequence'
   file_start = 0
   file_end = 0
-  file_prefix_config = '/home/fbalboa/simulations/RigidMultiblobsWall/rheology/data/run2000/run2131/run2131.3.0.'
-  file_suffix_config = '.star_run2131.3.0.' 
-  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/FreeSlip/data/run0/run1/run1.0.0.0.shell.config']
-  structure = 'shell'
+  file_prefix_config = None
+  file_suffix_config = None
+  files_config = ['/home/fbalboa/simulations/RigidMultiblobsWall/FreeSlip/data/run0/run6/run6.5.0.0.colloids.config']
+  structure = 'colloids'
   name_vertex = '/home/fbalboa/sfw/RigidMultiblobsWall/multi_bodies/Structures/shell_N_42_Rg_0_8913_Rh_1.vertex'
   num_frames = 10000
   n_save_xyz = 1
@@ -71,10 +71,7 @@ if __name__ == '__main__':
   if save_blobs:
     name = file_prefix + '.' + structure + '.xyz'
     num_blobs = r_vectors.shape[0] * x.shape[1]
-    blob_vector_constant = np.zeros((x.shape[1], r_vectors.shape[0]))
-    for i in range(x.shape[1]):
-      blob_vector_constant[i,:] = x[0,i,0]
-    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper(), blob_vector_constant=blob_vector_constant)
+    sa.save_xyz(x, r_vectors, name, num_frames=num_frames, letter=structure[0].upper())
        
   # Save velocity as xyz file
   if save_velocity:
@@ -92,14 +89,21 @@ if __name__ == '__main__':
   # Save dipole as xyz file
   if save_dipole:
     dipole_0 = np.fromstring(read.get('mu'), sep=' ')
-    B0 = float(read.get('B0'))
-    omega = float(read.get('omega'))
     dipole = np.zeros((x.shape[1], 3))
     dipole[:] = dipole_0
-    B_xy = np.zeros((x.shape[0], 3))
-    B_xy[:,0] = B0 * np.cos(omega * t)
-    B_xy[:,1] = B0 * np.sin(omega * t)
-    B = np.einsum('ij,kj->ki', R_B, B_xy)  
+    B1 = np.zeros((x.shape[0], 3))
+    if False:
+      B0 = float(read.get('B0'))
+      omega = float(read.get('omega'))
+      B1 = np.zeros((x.shape[0], 3))
+      B1[:,0] = B0 * np.cos(omega * t)
+      B1[:,1] = B0 * np.sin(omega * t)
+    else:
+      B0 = np.fromstring(read.get('B0') or '0 0 0', sep=' ')
+      omega = np.fromstring(read.get('omega') or '0 0 0', sep=' ')
+      phi = np.fromstring(read.get('phi') or '0 0 0', sep=' ')
+      B1[:] = B0[None,:] * np.cos(omega[None,:] * t[:,None] + phi[None,:])   
+    B = np.einsum('ij,kj->ki', R_B, B1)
     name = file_prefix + '.' + structure + '.dipole.xyz'    
     print('B0    = ', B0)
     print('omega = ', omega)
