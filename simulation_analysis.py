@@ -772,11 +772,17 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcutx, rcu
         zbin = int((rz + rcutz) / dbinz) if rz >= -rcutz else -1
       else:
         zbin = 0
-
+      dbin = int(np.sqrt(rx**2 + ry**2) / dbinx)
+        
       # Update gr
-      if (xbin >= 0) and (xbin < nbinsx) and (ybin >= 0) and (ybin < nbinsy) and (zbin >= 0) and (zbin < nbinsz):
-        # Beware x is the fast axis in visit
-        gr[zbin, ybin, xbin] += 1.0
+      if dim == '3d':
+        if (xbin >= 0) and (xbin < nbinsx) and (ybin >= 0) and (ybin < nbinsy) and (zbin >= 0) and (zbin < nbinsz):
+          # Beware x is the fast axis in visit
+          gr[zbin, ybin, xbin] += 1.0
+      elif dim == '2d_radial':
+        if (dbin < nbinsx) and (zbin >= 0) and (zbin < nbinsz):
+          # Beware x is the fast axis in visit
+          gr[zbin, 0, dbin] += 1.0
         
   return gr
 
@@ -828,6 +834,15 @@ def pair_distribution_function(x,
   elif dim == '2d':
     gr = np.zeros((nbins, nbins))
     rcut_tree = rcut * np.sqrt(2.0)
+  elif dim == '2d_radial':
+    gr = np.zeros((nbinsx, 1, nbinsz))
+    rcutx = rcut if rcut < L[0] / 2 else L[0] / 2
+    rcuty = rcut if rcut < L[1] / 2 else L[1] / 2
+    rcutz = rcut if rcut < L[2] / 2 else L[2] / 2
+    dbinx = 1 * rcutx / nbinsx if nbinsx > 0 else 0
+    dbiny = 1
+    dbinz = 2 * rcutz / nbinsz if nbinsz > 0 else 0
+    rcut_tree = np.sqrt(rcutx**2 + rcuty**2 + rcutz**2)
   else:
     print('Wrong dimensions, dim = ', dim,' is not valid')
     return None
@@ -844,7 +859,7 @@ def pair_distribution_function(x,
         r = np.dot(r_vectors, R.T) + y[0:3]
         r = r.reshape((r.size // 3, 3))
         z[Nblobs_body * j: Nblobs_body * (j+1)] = r
-    
+
     # Project to PBC
     z = project_to_periodic_image(np.copy(z), L)
 
@@ -895,6 +910,14 @@ def pair_distribution_function(x,
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
     factor = M * N * (N-1) * dbinx * np.maximum(dbiny, 1) * dbinz / (Lx * np.maximum(Ly, 1) * Lz)
     gr = gr / factor
+  elif dim == '2d_radial':
+    Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
+    Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
+    Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
+    factor = M * N # * (N-1) * dbinx * np.maximum(dbiny, 1) * dbinz / (Lx * np.maximum(Ly, 1) * Lz)
+    print('factor = ', factor)
+    print('gr     = ', np.sum(gr))
+    gr = gr / factor   
   else:
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
@@ -910,7 +933,10 @@ def pair_distribution_function(x,
     vardims = np.array([1])
     centering = np.array([0])
     varnames = ['pair_distribution\0']
-    grid_x = np.arange(nbinsx + 1) * dbinx - (nbinsx * 0.5) * dbinx
+    if dim == '2d_radial':
+      grid_x = np.arange(nbinsx + 1) * dbinx
+    else:
+      grid_x = np.arange(nbinsx + 1) * dbinx - (nbinsx * 0.5) * dbinx
     grid_y = np.arange(nbinsy + 1) * dbiny - (nbinsy * 0.5) * dbiny
     grid_z = np.arange(nbinsz + 1) * dbinz - (nbinsz * 0.5) * dbinz
 
