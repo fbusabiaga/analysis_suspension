@@ -715,7 +715,7 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcutx, rcu
   '''
   N = r_vectors.size // 3
   r_vectors = r_vectors.reshape((N, 3))
-  gr = np.zeros((nbinsx, nbinsy, nbinsz))
+  gr = np.zeros((nbinsz, nbinsy, nbinsx))
 
   # Copy arrays
   rx_vec = np.copy(r_vectors[:,0])
@@ -823,7 +823,7 @@ def pair_distribution_function(x,
     
   # Note that the bins should go from negative r to positive r so the factor 2 in dbin
   if dim == '3d':
-    gr = np.zeros((nbinsx, nbinsy, nbinsz))
+    gr = np.zeros((nbinsz, nbinsy, nbinsx))
     rcutx = rcut if rcut < L[0] / 2 else L[0] / 2
     rcuty = rcut if rcut < L[1] / 2 else L[1] / 2
     rcutz = rcut if rcut < L[2] / 2 else L[2] / 2
@@ -908,7 +908,10 @@ def pair_distribution_function(x,
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
-    factor = M * N * (N-1) * dbinx * np.maximum(dbiny, 1) * dbinz / (Lx * np.maximum(Ly, 1) * Lz)
+    # factor = M * N * (N-1) * dbinx * np.maximum(dbiny, 1) * dbinz / (Lx * np.maximum(Ly, 1) * Lz)
+    factor = M * N * (N-1) * dbinx * dbiny * dbinz / (Lx * Ly * Lz)
+    print('factor = ', factor)
+    print('gr     = ', np.sum(gr))
     gr = gr / factor
   elif dim == '2d_radial':
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
