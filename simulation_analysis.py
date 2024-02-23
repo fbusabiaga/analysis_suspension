@@ -709,7 +709,7 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
 
 
 @njit(parallel=False, fastmath=True)
-def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbinsx, nbinsy, nbinsz, dbinx, dbiny, dbinz, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls):
+def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcutx, rcuty, rcutz, nbinsx, nbinsy, nbinsz, dbinx, dbiny, dbinz, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls):
   '''
   This function compute the pair distribution function g(x,y,z) for one snapshot.
   '''
@@ -727,9 +727,9 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbin
 
   # Set offset distance from walls
   if offset_walls:
-    LxW = Lx_wall + np.array([rcut, -rcut])
-    LyW = Ly_wall + np.array([rcut, -rcut])
-    LzW = Lz_wall + np.array([rcut, -rcut])
+    LxW = Lx_wall + np.array([rcutx, -rcutx])
+    LyW = Ly_wall + np.array([rcuty, -rcuty])
+    LzW = Lz_wall + np.array([rcutz, -rcutz])
   else:
     LxW = Lx_wall 
     LyW = Ly_wall 
@@ -752,22 +752,32 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcut, nbin
       rz = rz_vec[j] - rz_vec[i]
 
       # Use distance with PBC
-      if Lx > 0:
-        rx = rx - int(rx / Lx + 0.5 * (int(rx>0) - int(rx<0))) * Lx
-      if Ly > 0:
-        ry = ry - int(ry / Ly + 0.5 * (int(ry>0) - int(ry<0))) * Ly
-      if Lz > 0:
-        rz = rz - int(rz / Lz + 0.5 * (int(rz>0) - int(rz<0))) * Lz
+      if Lx >= 0:
+        rx = rx - int(rx / Lx + 0.5 * (int(rx>0) - int(rx<0))) * Lx if Lx > 0 else 0
+      if Ly >= 0:
+        ry = ry - int(ry / Ly + 0.5 * (int(ry>0) - int(ry<0))) * Ly if Ly > 0 else 0
+      if Lz >= 0:
+        rz = rz - int(rz / Lz + 0.5 * (int(rz>0) - int(rz<0))) * Lz if Lz > 0 else 0
         
       # Compute bins
-      xbin = int((rx + rcut) / dbinx) if rx > -rcut else -1
-      ybin = int((ry + rcut) / dbiny) if ry > -rcut else -1
-      zbin = int((rz + rcut) / dbinz) if rz > -rcut else -1
+      if rcutx > 0:
+        xbin = int((rx + rcutx) / dbinx) if rx >= -rcutx else -1
+      else:
+        xbin = 0
+      if rcuty > 0:
+        ybin = int((ry + rcuty) / dbiny) if ry >= -rcuty else -1
+      else:
+        ybin = 0
+      if rcutz > 0:        
+        zbin = int((rz + rcutz) / dbinz) if rz >= -rcutz else -1
+      else:
+        zbin = 0
 
       # Update gr
       if (xbin >= 0) and (xbin < nbinsx) and (ybin >= 0) and (ybin < nbinsy) and (zbin >= 0) and (zbin < nbinsz):
         # Beware x is the fast axis in visit
         gr[zbin, ybin, xbin] += 1.0
+        
   return gr
 
 
@@ -776,7 +786,7 @@ def pair_distribution_function(x,
                                rcut=1.0,
                                nbinsx=10,
                                nbinsy=10,
-                               nbinsz=10,                               
+                               nbinsz=10,
                                r_vectors=None,
                                L=np.ones(3),
                                offset_walls=False,
@@ -808,10 +818,13 @@ def pair_distribution_function(x,
   # Note that the bins should go from negative r to positive r so the factor 2 in dbin
   if dim == '3d':
     gr = np.zeros((nbinsx, nbinsy, nbinsz))
-    dbinx = 2 * rcut / nbinsx
-    dbiny = 2 * rcut / nbinsy
-    dbinz = 2 * rcut / nbinsz  
-    rcut_tree = rcut * np.sqrt(3.0)
+    rcutx = rcut if rcut < L[0] / 2 else L[0] / 2
+    rcuty = rcut if rcut < L[1] / 2 else L[1] / 2
+    rcutz = rcut if rcut < L[2] / 2 else L[2] / 2
+    dbinx = 2 * rcutx / nbinsx if nbinsx > 0 else 0
+    dbiny = 2 * rcuty / nbinsy if nbinsy > 0 else 0
+    dbinz = 2 * rcutz / nbinsz if nbinsz > 0 else 0
+    rcut_tree = np.sqrt(rcutx**2 + rcuty**2 + rcutz**2)
   elif dim == '2d':
     gr = np.zeros((nbins, nbins))
     rcut_tree = rcut * np.sqrt(2.0)
@@ -842,9 +855,9 @@ def pair_distribution_function(x,
         if L[j] > 0:
           boxsize[j] = L[j]
         else:
-          boxsize[j] = (np.max(z[:,j]) - np.min(z[:,j])) + rcut * 10
+          boxsize[j] = (np.max(z[:,j]) - np.min(z[:,j])) + rcut_tree * 10
     else:
-      boxsize = None   
+      boxsize = None
 
     # Build tree 
     tree = scsp.cKDTree(z, boxsize=boxsize)
@@ -858,7 +871,9 @@ def pair_distribution_function(x,
                                   L,
                                   list_of_neighbors,
                                   offsets,
-                                  rcut,
+                                  rcutx,
+                                  rcuty,
+                                  rcutz,
                                   nbinsx,
                                   nbinsy,
                                   nbinsz,
@@ -878,7 +893,7 @@ def pair_distribution_function(x,
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
-    factor = M * N * (N-1) * dbinx * dbiny * dbinz / (Lx * Ly * Lz)
+    factor = M * N * (N-1) * dbinx * np.maximum(dbiny, 1) * dbinz / (Lx * np.maximum(Ly, 1) * Lz)
     gr = gr / factor
   else:
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
