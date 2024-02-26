@@ -915,10 +915,8 @@ def pair_distribution_function(x,
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
-    factor = M * N # * (N-1) * dbinx * np.maximum(dbiny, 1) * dbinz / (Lx * np.maximum(Ly, 1) * Lz)
-    print('factor = ', factor)
-    print('gr     = ', np.sum(gr))
-    gr = gr / factor   
+    factor = M * N * (N-1) * np.pi * (np.arange(1, nbinsx + 1)**2 - np.arange(0, nbinsx)**2) * dbinx**2 * dbinz / (Lx * Ly * Lz)
+    gr = gr / factor[None,None,:]
   else:
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
