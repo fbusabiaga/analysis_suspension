@@ -487,7 +487,7 @@ def rotation_matrix(theta):
 
 
 def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None,
-             blob_vector_constant=None, periodic_length=np.zeros(3), frame_body=-1, header=''):
+             blob_vector_constant=None, body_frame_blob_vector=None, periodic_length=np.zeros(3), frame_body=-1, header=''):
   '''
   Save xyz file.
   '''
@@ -531,12 +531,18 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
 
       if body_frame_vector is not None:
         v = np.dot(body_frame_vector, R.T)
+
+      if body_frame_blob_vector is not None:
+        bfbv = np.dot(body_frame_blob_vector[j], R.T)
         
       for k, ri in enumerate(r):
         file_output.write(letter + ' %s %s %s ' % (ri[0], ri[1], ri[2]))
 
         if body_frame_vector is not None:
           np.savetxt(file_output, v[j], newline=' ')
+
+        if body_frame_blob_vector is not None:
+          np.savetxt(file_output, bfbv[k], newline=' ')
 
         if body_vector is not None:
           np.savetxt(file_output, vr[j], newline=' ')
