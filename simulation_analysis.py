@@ -16,6 +16,11 @@ except ImportError as e:
   njit=None
   print(e)
 
+try:
+  import sklearn.cluster as skcl
+except ImportError as e:
+  print(e)
+
 # Try to import the visit_writer (boost implementation)
 try:
   import visit_writer as visit_writer
@@ -23,7 +28,6 @@ except ImportError as e:
   print(e)
   pass
 
-  
 
 # Static Variable decorator for calculating acceptance rate.
 def static_var(varname, value):
@@ -1393,4 +1397,66 @@ def map2d(x, y, variable, nx=10, ny=10, x_ends=None, y_ends=None, centered=False
       plt.savefig(name)
 
 
-      
+def cluster_detection_sklearn_optics(x, max_eps=np.inf, min_samples=5, file_prefix=None):
+  '''
+  Detect clusters using the sklearnb.cluster.OPTICS.
+  '''
+  # Prepare cluster
+  clust = skcl.OPTICS(min_samples=min_samples, max_eps=max_eps, xi=0.05)
+  
+  if file_prefix:
+    # Prepare colors for a few curves xxxx
+    C = plt.cm.viridis(np.linspace(0, 1, 5)) 
+
+    # Create panel
+    fig, axes = plt.subplots(1, 1, figsize=(5,5))
+
+  # Loop over snapshots
+  labels = []
+  for i, xi in enumerate(x):
+    print('snapshot = ', i)
+    clust.fit(xi)
+    
+    # Get labels
+    labels_i = skcl.cluster_optics_dbscan(reachability = clust.reachability_,
+                                          core_distances = clust.core_distances_,
+                                          ordering = clust.ordering_,
+                                          eps=max_eps)
+    labels.append(labels_i)
+
+    if file_prefix:
+      axes.cla()
+      # Loop over klasses
+      for klass, color in enumerate(C):
+        Xk = xi[labels_i == klass]       
+        # Plot
+        axes.scatter(Xk[:,0], Xk[:,1], color=color)
+        
+      # Plot non-clusters
+      Xk = xi[labels == -1]    
+      axes.scatter(Xk[:,0], Xk[:,1], color='grey', alpha=0.3)
+  
+      # Set axes and legend
+      axes.set_xlabel('x')
+      axes.set_ylabel('y')
+      axes.legend()
+      fig.tight_layout()
+
+      # Save to pdf and png
+      name = file_prefix + '.step.' + str(i).zfill(8) + '.clusters.png'
+      plt.savefig(name, format='png') 
+
+  return labels
+
+
+def radius_of_gyration(r_vectors):
+  '''
+  Compute radius of gyration.
+
+  It returns the squared radius of gyration tensor and the scalar radius of gyration
+  '''
+  r_cm = np.mean(r_vectors, axis=0)
+  Rg_squared_ij = np.einsum('ni,nj->ij', r_vectors - r_cm, r_vectors - r_cm) / r_vectors.shape[0]
+  Rg = np.sqrt(Rg_squared_ij[0,0] + Rg_squared_ij[1,1] + Rg_squared_ij[2,2])
+
+  return Rg_squared_ij, Rg
