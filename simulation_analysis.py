@@ -478,18 +478,30 @@ def nonlinear_fit(x, y, func, sigma=None, p0=None, save_plot_name=None):
 
 
 def rotation_matrix(theta):
-    ''' 
-    Return the rotation matrix representing rotation by this quaternion.
-    '''
-    theta /= np.linalg.norm(theta)
-    s = theta[0]
-    p = theta[1:4]    
-    diag = s**2 - 0.5
-    return 2.0 * np.array([[p[0]**2+diag,     p[0]*p[1]-s*p[2], p[0]*p[2]+s*p[1]], 
-                           [p[1]*p[0]+s*p[2], p[1]**2+diag,     p[1]*p[2]-s*p[0]],
-                           [p[2]*p[0]-s*p[1], p[2]*p[1]+s*p[0], p[2]**2+diag]])
+  ''' 
+  Return the rotation matrix representing rotation by this quaternion.
+  '''
+  theta /= np.linalg.norm(theta)
+  s = theta[0]
+  p = theta[1:4]    
+  diag = s**2 - 0.5
+  return 2.0 * np.array([[p[0]**2+diag,     p[0]*p[1]-s*p[2], p[0]*p[2]+s*p[1]], 
+                         [p[1]*p[0]+s*p[2], p[1]**2+diag,     p[1]*p[2]-s*p[0]],
+                         [p[2]*p[0]-s*p[1], p[2]*p[1]+s*p[0], p[2]**2+diag]])
 
 
+def rotation_matrix_from_vector_and_angle(u, theta):
+  ''' 
+  Return the rotation matrix representing rotation by a unit vector.
+  '''
+  u /= np.linalg.norm(u)
+  c = np.cos(theta)
+  s = np.sin(theta)
+  return np.array([[u[0]**2 * (1 - c) + c,            u[0] * u[1] * (1 - c) - u[2] * s, u[0] * u[2] * (1 - c) + u[1] * s],
+                   [u[0] * u[1] * (1 - c) + u[2] * s, u[1]**2 * (1 - c) + c,            u[1] * u[2] * (1 - c) - u[0] * s],
+                   [u[0] * u[2] * (1 - c) - u[1] * s, u[1] * u[2] * (1 - c) + u[0] * s, u[2]**2 * (1 - c) + c]])
+
+  
 def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None,
              blob_vector_constant=None, body_frame_blob_vector=None, periodic_length=np.zeros(3), frame_body=-1, header=''):
   '''
@@ -1397,20 +1409,13 @@ def map2d(x, y, variable, nx=10, ny=10, x_ends=None, y_ends=None, centered=False
       plt.savefig(name)
 
 
-def cluster_detection_sklearn_optics(x, max_eps=np.inf, min_samples=5, file_prefix=None):
+def cluster_detection_sklearn_optics(x, max_eps=np.inf, min_samples=5, n_save=1, file_prefix=None):
   '''
   Detect clusters using the sklearnb.cluster.OPTICS.
   '''
   # Prepare cluster
   clust = skcl.OPTICS(min_samples=min_samples, max_eps=max_eps, xi=0.05)
   
-  if file_prefix:
-    # Prepare colors for a few curves xxxx
-    C = plt.cm.viridis(np.linspace(0, 1, 5)) 
-
-    # Create panel
-    fig, axes = plt.subplots(1, 1, figsize=(5,5))
-
   # Loop over snapshots
   labels = []
   for i, xi in enumerate(x):
@@ -1424,7 +1429,13 @@ def cluster_detection_sklearn_optics(x, max_eps=np.inf, min_samples=5, file_pref
                                           eps=max_eps)
     labels.append(labels_i)
 
-    if file_prefix:
+    if file_prefix and (i % n_save) == 0:
+      # Prepare colors for a few curves
+      C = plt.cm.viridis(np.linspace(0, 1, 5)) 
+      
+      # Create panel
+      fig, axes = plt.subplots(1, 1, figsize=(5,5))
+
       axes.cla()
       # Loop over klasses
       for klass, color in enumerate(C):
