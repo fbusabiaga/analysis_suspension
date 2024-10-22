@@ -111,13 +111,15 @@ def read_config(name):
       for line in f_handle:
         if num_lines == 0:
           N = int(line)
+        if num_lines == 1:
+          number_variables = len(line.split())
         num_lines += 1
   except OSError:
     return np.array([])
 
   # Set array 
   num_frames = num_lines // (N + 1) 
-  x = np.zeros((num_frames, N, 7)) 
+  x = np.zeros((num_frames, N, number_variables)) 
 
   # Read config
   with open(name, 'r') as f_handle:
@@ -552,6 +554,7 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
         bfbv = np.dot(body_frame_blob_vector[j], R.T)
         
       for k, ri in enumerate(r):
+        letter = str(j % 26)
         file_output.write(letter + ' %s %s %s ' % (ri[0], ri[1], ri[2]))
 
         if body_frame_vector is not None:
