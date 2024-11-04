@@ -308,6 +308,26 @@ def compute_velocities(x, dt=1, frame_rate=1):
   return v
 
 
+def compute_linear_velocities(x, dt=1, frame_rate=1):
+  '''
+  Compute velocities between frames.
+
+  Return with shape = (num_frames, num_bodies, 3).
+  '''
+  num_frames = x.shape[0]
+  N = x.shape[1]
+  dt_frames = frame_rate * dt
+  v = np.zeros((num_frames-frame_rate, N, 3))
+
+  # Loop over frames and bodies
+  for i in range(num_frames - frame_rate):
+    # Linear velocity
+    v[i,:,0:3] = (x[i+frame_rate, :, 0:3] - x[i, :, 0:3]) / dt_frames
+
+  # Return velocities
+  return v
+
+
 def compute_histogram_from_frames(sample, value=None, column_sample=0, column_value=0, num_intervales=10, xmin=0, xmax=1, N_avg=1, file_prefix=None):
   '''
   Compute histogram averages. Use column_sample to select the bin and column_value to compute the average.
