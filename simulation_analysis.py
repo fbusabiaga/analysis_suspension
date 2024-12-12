@@ -759,7 +759,7 @@ def radial_distribution_function(x, num_frames, rcut=1.0, nbins=100, r_vectors=N
 
 
 @njit(parallel=False, fastmath=True)
-def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcutx, rcuty, rcutz, nbinsx, nbinsy, nbinsz, dbinx, dbiny, dbinz, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls):
+def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcutx, rcuty, rcutz, nbinsx, nbinsy, nbinsz, dbinx, dbiny, dbinz, dim, Nblobs_body, Lx_wall, Ly_wall, Lz_wall, offset_walls, reference_particles):
   '''
   This function compute the pair distribution function g(x,y,z) for one snapshot.
   '''
@@ -785,7 +785,7 @@ def pair_distribution_numba(r_vectors, L, list_of_neighbors, offsets, rcutx, rcu
     LyW = Ly_wall 
     LzW = Lz_wall
 
-  for i in prange(N):
+  for i in reference_particles:
     i_body = i // Nblobs_body
 
     # Skipt if close to a wall
@@ -848,6 +848,7 @@ def pair_distribution_function(x,
                                offset_walls=False,
                                dim='3d',
                                name=None,
+                               reference_particles = None,
                                Lx_wall=np.array([-np.inf, np.inf]),
                                Ly_wall=np.array([-np.inf, np.inf]),
                                Lz_wall=np.array([-np.inf, np.inf])):
@@ -860,7 +861,9 @@ def pair_distribution_function(x,
   L = periodic dimensions. Use 0 if the system is infinite or have walls along one axis.
   offset_walls = if True do not use particles near than rcut from walls.
   Lx_wall = position of the walls along x axis. Use +/- np.inf if there are not walls.
-  dim=3d or 2d. 
+  dim=3d, 2d or 2d_radial. It controls the normalization.
+  reference_particles = which particles use as reference to compute the pair distribution function.
+                        If it is None it uses all the particles. 
   '''
   # Prepare variables
   M = x.shape[0] if x.shape[0] < num_frames else num_frames
@@ -870,6 +873,11 @@ def pair_distribution_function(x,
   else:
     Nblobs_body = 1
     N = x.shape[1]
+
+  # Select particles to use as reference
+  if reference_particles is None:
+    reference_particles = np.arange(N, dtype=int)
+  N_reference = reference_particles.shape[0]
     
   # Note that the bins should go from negative r to positive r so the factor 2 in dbin
   if dim == '3d':
@@ -951,7 +959,8 @@ def pair_distribution_function(x,
                                   Lx_wall,
                                   Ly_wall,
                                   Lz_wall,
-                                  offset_walls=offset_walls)
+                                  offset_walls,
+                                  reference_particles)
     gr += gri
     
   # Normalize gr 
@@ -959,18 +968,18 @@ def pair_distribution_function(x,
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
-    factor = M*N*(N-1) * (dbinx if dbinx > 0 else 1) * (dbiny if dbiny > 0 else 1) * (dbinz if dbinz > 0 else 1) / ((Lx if Lx > 0 else 1) * (Ly if Ly > 0 else 1) * (Lz if Lz > 0 else 1))
+    factor = M * N_reference * (N-1) * (dbinx if dbinx > 0 else 1) * (dbiny if dbiny > 0 else 1) * (dbinz if dbinz > 0 else 1) / ((Lx if Lx > 0 else 1) * (Ly if Ly > 0 else 1) * (Lz if Lz > 0 else 1))
     gr = gr / factor
   elif dim == '2d_radial':
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
     Lz = L[2] if np.any(np.isinf(Lz_wall)) else Lz_wall[1] - Lz_wall[0]
-    factor = M * N * (N-1) * np.pi * (np.arange(1, nbinsx + 1)**2 - np.arange(0, nbinsx)**2) * dbinx**2 * dbinz / (Lx * Ly * Lz)
+    factor = M * N_reference * (N-1) * np.pi * (np.arange(1, nbinsx + 1)**2 - np.arange(0, nbinsx)**2) * dbinx**2 * dbinz / (Lx * Ly * Lz)
     gr = gr / factor[None,None,:]
   else:
     Lx = L[0] if np.any(np.isinf(Lx_wall)) else Lx_wall[1] - Lx_wall[0]
     Ly = L[1] if np.any(np.isinf(Ly_wall)) else Ly_wall[1] - Ly_wall[0]
-    factor = M * N * (N-1) * dbin**2 / (Lx * Ly)
+    factor = M * N_reference * (N-1) * dbin**2 / (Lx * Ly)
     gr = gr[:,1] / factor
 
   # Save gr
