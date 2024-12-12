@@ -525,7 +525,7 @@ def rotation_matrix_from_vector_and_angle(u, theta):
 
   
 def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, body_frame_vector=None, body_vector=None, global_vector=None,
-             blob_vector_constant=None, body_frame_blob_vector=None, periodic_length=np.zeros(3), frame_body=-1, header=''):
+             blob_vector_constant=None, body_frame_blob_vector=None, periodic_length=np.zeros(3), project_PBC_bodies=False, project_PBC_blobs=False, frame_body=-1, header=''):
   '''
   Save xyz file.
   '''
@@ -557,14 +557,19 @@ def save_xyz(x, r_vectors, name, num_frames=1, letter='O', articulated=False, bo
       theta = y[3:8]
       q = y[0:3]
       R = rotation_matrix(theta)
+      
       if frame_body > -1:
         q = np.dot(rotation_matrix(xi[frame_body, 3:8]).T, (y[0:3] - xi[frame_body, 0:3]))
         R = np.dot(rotation_matrix(xi[frame_body, 3:8]).T, R)
+
+      if project_PBC_bodies and  np.any(periodic_length > 0):
+        q = project_to_periodic_image(q.reshape((1,3)), periodic_length, shift=False).reshape(3)
+        
       r = np.dot(r_vectors[j % Nrigid], R.T) + q
       r = r.reshape((r.size // 3, 3))
 
       # Project to PBC 
-      if np.any(periodic_length > 0):
+      if project_PBC_blobs and np.any(periodic_length > 0):
         r = project_to_periodic_image(r, periodic_length, shift=False)
 
       if body_frame_vector is not None:
