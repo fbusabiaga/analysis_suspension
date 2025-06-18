@@ -138,6 +138,41 @@ def read_config(name):
   return x
 
 
+def calc_K_matrix(rotation_matrix, r_vectors):
+  '''
+  Return geometric matrix K = [J, rot] with shape (3*Nblobs, 6)
+  '''
+  Nblobs = r_vectors.size // 3
+
+  # J matrix
+  J = np.zeros((3*Nblobs, 3))
+  J[0::3,0] = 1.0
+  J[1::3,1] = 1.0
+  J[2::3,2] = 1.0
+
+  # rot matrix xxx
+  r_vectors = get_r_vectors(np.zeros(3), rotation_matrix, r_vectors)
+  rot_matrix = np.zeros((r_vectors.shape[0], 3, 3))
+  rot_matrix[:,0,1] = r_vectors[:,2]
+  rot_matrix[:,0,2] = -r_vectors[:,1]
+  rot_matrix[:,1,0] = -r_vectors[:,2]
+  rot_matrix[:,1,2] = r_vectors[:,0]
+  rot_matrix[:,2,0] = r_vectors[:,1]
+  rot_matrix[:,2,1] = -r_vectors[:,0]
+  rot_matrix = rot_matrix.reshape((3*Nblobs, 3))
+  return np.concatenate([J, rot_matrix], axis=1)
+
+
+def get_r_vectors(location, rotation_matrix, reference_configuration):
+  '''
+  Return the coordinates of the blobs.
+  '''
+  # Compute blobs coordinates
+  r_vectors = np.dot(reference_configuration, rotation_matrix.T)
+  r_vectors += location
+  return r_vectors   
+
+
 def read_config_list(names, print_name=False):
   '''
   Read list of config files x_0, x_1, x_2 ... 
@@ -1508,3 +1543,49 @@ def radius_of_gyration(r_vectors):
   Rg = np.sqrt(Rg_squared_ij[0,0] + Rg_squared_ij[1,1] + Rg_squared_ij[2,2])
 
   return Rg_squared_ij, Rg
+
+
+def compute_stress(x, r_vectors, blob_forces, name, periodic_length=np.zeros(3), save_dat_index=[], mode='no_projection'):
+  '''
+  Compute the stress on the bodies
+  '''
+
+  # Reshape vectors
+  Nblobs = r_vectors.size // 3
+  r_vectors = r_vectors.reshape((Nblobs, 3))
+  
+  if len(save_dat_index) == 0:
+    # Compute stress of the whole system
+    S = []
+
+    for i, xi in enumerate(x):
+      Si = np.zeros((3,3))
+      for j, y in enumerate(xi):
+        theta = y[3:8]
+        q = y[0:3]
+        R = rotation_matrix(theta)
+
+        # Project to periodic image
+        q = project_to_periodic_image(q.reshape((1,3)), periodic_length, shift=False).reshape(3)
+        r = np.dot(r_vectors, R.T) + q
+        r = r.reshape((r.size // 3, 3))
+
+        # Get blob forces for body j at time i
+        blob_forces_ij = blob_forces[i, j*Nblobs : (j+1)*Nblobs]
+
+        # Get total force
+        F = np.sum(blob_forces_ij, axis=0)
+                   
+        # Compute stress
+        stress = np.einsum('bk, bl -> kl', r - q[None,:], blob_forces_ij) + np.outer(q, F[0:3])
+        Si += stress
+
+      # Store stress 
+      S.append(Si) 
+
+    # Save stress 
+    S = np.array(S) 
+    S = S.reshape((x.shape[0], 9)) 
+    np.savetxt(name, S)   
+    
+                
