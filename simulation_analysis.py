@@ -214,10 +214,12 @@ def read_particle_number(name):
   return None
 
 
-def read_vertex(name):
+def read_vertex(name, return_all_variables=False):
   '''
   It reads a vertex file of the rigid bodies and return
   the coordinates as a numpy array with shape (Nblobs, 3).
+
+  If return_all_variables=True the return array will have shape (Nblobs, number_of_variables).
   '''
   comment_symbols = ['#']   
   coor = []
@@ -239,7 +241,9 @@ def read_vertex(name):
         i += 1
 
   coor = np.array(coor)
-  return coor[:,0:3]
+  if return_all_variables is False:
+    coor = coor[:,0:3]
+  return coor
 
 
 def read_vertex_file_list(name_files, path=None):
