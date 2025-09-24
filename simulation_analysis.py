@@ -100,6 +100,8 @@ def read_input(name):
 def read_config(name):
   '''
   Read config and store in an array of shape (num_frames, num_bodies, 7).
+
+  It can also read a file with the velocities and return an array of shape (num_frames, num_bodies, 6).
   '''
 
   # Read number of lines and bodies
@@ -1577,7 +1579,7 @@ def compute_stress(x, r_vectors, blob_forces, name, periodic_length=np.zeros(3),
         F = np.sum(blob_forces_ij, axis=0)
                    
         # Compute stress
-        stress = np.einsum('bk, bl -> kl', r - q[None,:], blob_forces_ij) + np.outer(q, F[0:3])
+        stress = np.einsum('bk, bl -> kl', r - q, blob_forces_ij) + np.outer(q, F[0:3])
         Si += stress
 
       # Store stress 
